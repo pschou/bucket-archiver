@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/xml"
+	"fmt"
 	"log"
 	"time"
 
@@ -10,7 +12,19 @@ import (
 var (
 	scanMutex      = make(chan struct{}, 1) // semaphore to limit concurrent scans
 	clamavInstance *clamav.Clamav
+
+	virusScanMeta    = Virus_scan{Vendor: "ClamAV lib", Result: "pass"}
+	virusScanMetaXML []byte // XML representation of the virus scan metadata
 )
+
+type Virus_scan struct {
+	XMLName        xml.Name `xml:"virus_scan" json:"virus_scan"`
+	Text           string   `xml:",chardata"`
+	Vendor         string   `xml:"vendor" json:"vendor"`
+	Version        string   `xml:"version" json:"version"`
+	Signature_date string   `xml:"signature_date" json:"signature_date"`
+	Result         string   `xml:"result" json:"result"`
+}
 
 func init() {
 	log.Println("Initializing ClamAV...")
@@ -53,6 +67,7 @@ func init() {
 		log.Fatalln("Could not get ClamAV DB version", err)
 	}
 	log.Println("ClamAV DB version:", dbVersion)
+	virusScanMeta.Version = fmt.Sprintf("%d", dbVersion)
 
 	// get db time
 	// This is the time when the database was last updated.
@@ -62,6 +77,7 @@ func init() {
 		log.Fatalln("Could not get ClamAV DB time", err)
 	}
 	log.Println("ClamAV DB time:", time.Unix(int64(dbTime), 0))
+	virusScanMeta.Signature_date = time.Unix(int64(dbTime), 0).Format(time.RFC3339)
 
 	// set max scansize
 	// 40 GB
@@ -106,6 +122,8 @@ func init() {
 		log.Fatalln("Could not get max file size", err)
 	}
 	log.Println("Max file size:", maxFileSize)
+	virusScanMetaXML, _ = xml.MarshalIndent(virusScanMeta, "", "  ")
 
 	log.Println("ClamAV initialized successfully")
+	log.Println(string(virusScanMetaXML))
 }

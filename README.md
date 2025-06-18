@@ -39,18 +39,9 @@ Before using the archiving tool, ensure you have:
 
 To use the archiving tool, follow these steps:
 
-1. Modify the configuration file (`config.json`) to specify:
-   - `source_bucket`: The name of the S3 bucket containing the files to archive.
-   - `destination_bucket`: The name of the S3 bucket where the archived tarball will be uploaded.
-   - `clamav_path`: The path to the ClamAV executable.
-
-   ```json
-   {
-     "source_bucket": "your-source-bucket",
-     "destination_bucket": "your-destination-bucket",
-     "clamav_path": "/usr/local/bin/clamscan"
-   }
-   ```
+1. Modify the environment variables to specify:
+   - `SRC_BUCKET`: The name of the S3 bucket containing the files to archive.
+   - `DST_BUCKET`: The name of the S3 bucket where the archived tarball will be uploaded.
 
 2. Run the archiving script:
    ```bash

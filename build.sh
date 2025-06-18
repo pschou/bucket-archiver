@@ -1,8 +1,9 @@
 #!/bin/bash
+#
+# This script takes the golang code and spits out a portable executable for doing bucket scanning.
+#
 set -e -x
 
-rpm -q clamav-devel clamav || yum install clamav-devel clamav
+rpm -q clamav-devel clamav golang || yum install clamav-devel clamav golang
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib CGO_LDFLAGS="-L/usr/local/lib -lclamav" go build -o s3archiver .
 
-rsync -av /var/lib/clamav/ ./db/
-#CGO_LDFLAGS="-L/usr/local/lib -lclamav" go run main.go

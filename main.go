@@ -129,7 +129,7 @@ func main() {
 
 		// Scan the file
 		fmt.Printf("Scanning file: %s\n", tempFilePath)
-		if _, err := ScanFile(entry.Name); err != nil {
+		if _, err := ScanFile(tempFilePath); err != nil {
 			log.Printf("Error scanning file %s: %v", entry.Name, err)
 			os.Remove(tempFilePath) // Clean up temp file if scanning fails
 			continue                // Skip this file if scanning fails

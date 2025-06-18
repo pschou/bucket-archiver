@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/xml"
 	"fmt"
 	"log"
 	"time"
@@ -11,21 +10,9 @@ import (
 
 var (
 	scanMutex      = make(chan struct{}, 1) // semaphore to limit concurrent scans
-	clamavInstance *clamav.Clamav
-
-	virusScanMeta    = Virus_scan{Vendor: "ClamAV lib", Result: "pass"}
-	virusScanMetaXML []byte                // XML representation of the virus scan metadata
-	virusScanMap     = map[string]string{} // Metadata map for virus scan
+	clamavInstance *clamav.Clamav           // ClamAV instance for scanning files
+	virusScanMap   = map[string]string{}    // Metadata map for virus scan
 )
-
-type Virus_scan struct {
-	XMLName        xml.Name `xml:"virus_scan" json:"virus_scan"`
-	Text           string   `xml:",chardata"`
-	Vendor         string   `xml:"vendor" json:"vendor"`
-	Version        string   `xml:"version" json:"version"`
-	Signature_date string   `xml:"signature_date" json:"signature_date"`
-	Result         string   `xml:"result" json:"result"`
-}
 
 func init() {
 	log.Println("Initializing ClamAV...")
@@ -58,6 +45,7 @@ func init() {
 		panic(err)
 	}
 	log.Println("engine compiled successfully")
+	virusScanMap["vendor"] = "ClamAV lib"
 
 	// get db version
 	// This is the version of the ClamAV database.
@@ -68,7 +56,7 @@ func init() {
 		log.Fatalln("Could not get ClamAV DB version", err)
 	}
 	log.Println("ClamAV DB version:", dbVersion)
-	virusScanMeta.Version = fmt.Sprintf("%d", dbVersion)
+	virusScanMap["version"] = fmt.Sprintf("%d", dbVersion)
 
 	// get db time
 	// This is the time when the database was last updated.
@@ -78,7 +66,7 @@ func init() {
 		log.Fatalln("Could not get ClamAV DB time", err)
 	}
 	log.Println("ClamAV DB time:", time.Unix(int64(dbTime), 0))
-	virusScanMeta.Signature_date = time.Unix(int64(dbTime), 0).Format(time.RFC3339)
+	virusScanMap["signature_date"] = time.Unix(int64(dbTime), 0).Format(time.RFC3339)
 
 	// set max scansize
 	// 40 GB
@@ -123,9 +111,8 @@ func init() {
 		log.Fatalln("Could not get max file size", err)
 	}
 	log.Println("Max file size:", maxFileSize)
-	virusScanMetaXML, _ = xml.Marshal(virusScanMeta)
 
 	log.Println("ClamAV initialized successfully")
-	log.Println(string(virusScanMetaXML))
-	virusScanMap["scan"] = string(virusScanMetaXML)
+
+	virusScanMap["result"] = "pass"
 }

@@ -246,6 +246,9 @@ func main() {
 			log.Fatalf("failed to write metadata tar header: %v", err)
 		}
 
+		uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
+		readSize += entry.Size         // Accumulate total size for all files processed
+
 		if tempFilePath == "" {
 			// If we scanned the file in memory, write the memory buffer to the tarball
 			if _, err := io.Copy(tw, bytes.NewReader(tempFileMem)); err != nil {
@@ -267,9 +270,6 @@ func main() {
 			} else {
 				//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
 			}
-			uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
-			readSize += entry.Size         // Accumulate total size for all files processed
-
 			contents.Close() // Close the temp file after copying
 		}
 	}
@@ -293,11 +293,9 @@ func main() {
 		// Calculate compression percentage
 		if stat, err := tgzFile.Stat(); err == nil {
 			compressedSize := stat.Size()
-			if uncompressedSize > 0 {
-				compressionPct := 100 - (float64(compressedSize) * 100 / float64(uncompressedSize))
-				fmt.Printf("Closing %s, compression: %.2f%% (compressed: %d bytes, uncompressed: %d bytes)\n",
-					tgzFilePath, compressionPct, compressedSize, uncompressedSize)
-			}
+			compressionPct := 100 - (float64(compressedSize) * 100 / float64(uncompressedSize))
+			fmt.Printf("Closing %s, compression: %.2f%% (compressed: %d bytes, uncompressed: %d bytes)\n",
+				tgzFilePath, compressionPct, compressedSize, uncompressedSize)
 		}
 		if err := tgzFile.Close(); err != nil {
 			log.Fatalf("failed to close tgz file: %v", err)

@@ -154,9 +154,11 @@ func uploadFileToBucket(ctx context.Context, dstBucket string, key string, fileP
 	defer file.Close()
 
 	_, err = s3client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(dstBucket),
-		Key:    aws.String(key),
-		Body:   file,
+		Bucket:      aws.String(dstBucket),
+		Key:         aws.String(key),
+		Body:        file,
+		ContentType: aws.String("application/octet-stream"), // Set appropriate content type
+		Metadata:    virusScanMap,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload file to bucket %s with key %s: %w", dstBucket, key, err)

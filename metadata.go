@@ -34,6 +34,7 @@ func loadMetadata(ctx context.Context, client *s3.Client, srcBucket string) (tot
 
 	// Ensure the metadata file is closed and flushed properly
 	defer func() {
+		log.Println("Writing out metadata file")
 		if err := metadataBuf.Flush(); err != nil {
 			log.Fatalln("Error writing metadata,", err)
 		}

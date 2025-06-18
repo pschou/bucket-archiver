@@ -61,6 +61,7 @@ func main() {
 		totalSize = fileStats.Size
 		objectCount = fileStats.Count
 	} else if !os.IsNotExist(err) {
+		log.Printf("creating metadata file %q", metadataFileName)
 		// Create metadata file if it doesn't exist
 		totalSize, objectCount, err = loadMetadata(ctx, client, srcBucket)
 		if err != nil {

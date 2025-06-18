@@ -100,7 +100,7 @@ func main() {
 		if tgzFile == nil || uncompressedSize > sizeCapLimit {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one
-				fmt.Printf("Closing tarball %s with uncompressed size %d bytes\n", tgzFilePath, uncompressedSize)
+				fmt.Printf("Closing tarball archive_%07d.tgz with uncompressed size %d bytes\n", archiveCount, uncompressedSize)
 
 				// Close the current tar writer and gzip writer
 				if err := tw.Close(); err != nil {
@@ -112,6 +112,14 @@ func main() {
 				if err := tgzFile.Close(); err != nil {
 					log.Fatalf("failed to close tgz file: %v", err)
 				}
+
+				if err := uploadFileToBucket(ctx, dstBucket, tgzFilePath, tgzFilePath); err != nil {
+					log.Fatalf("failed to upload tgz file to S3: %v", err)
+				}
+
+				fmt.Printf("Uploaded %s to bucket %s\n", tgzFilePath, dstBucket)
+				os.Remove(tgzFilePath)
+
 				archiveCount++       // Increment archive count for the next tarball
 				uncompressedSize = 0 // Reset uncompressed size for the next tarball
 			}

@@ -74,12 +74,7 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objec
 	summaryLine := fmt.Sprintf(`{"total_objects":%d,"total_size":%d}`+"\n", objectCount, totalSize)
 	metadataBuf.WriteString(summaryLine)
 	log.Printf("Metadata written: %d objects, total size %d bytes\n", objectCount, totalSize)
-	if err := metadataBuf.Flush(); err != nil {
-		log.Fatalln("Error flushing metadata buffer,", err)
-	}
-	if err := metadataFile.Close(); err != nil {
-		log.Fatalln("Error closing metadata file,", err)
-	}
+
 	log.Println("Metadata file created successfully:", metadataFileName)
 	// Print summary
 	log.Printf("Total objects: %d, Total size: %d bytes\n", objectCount, totalSize)

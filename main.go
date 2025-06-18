@@ -125,6 +125,9 @@ func main() {
 			log.Printf("failed to unmarshal line %q: %v", line, err)
 			break // likely EOF or malformed line
 		}
+		if entry.Key == "" {
+			break
+		}
 		fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
 		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)

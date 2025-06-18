@@ -69,8 +69,8 @@ func init() {
 		// Refresh credentials every 20 minutes to ensure low latency on requests
 		// and recovery should the server not have a policy assigned to it yet.
 		for {
-			log.Printf("Pulling new creds for s3Client %#v\n", s3client)
 			time.Sleep(refreshTime)
+			log.Printf("Pulling new creds for s3Client %#v\n", s3client)
 			getConfig()
 		}
 	}()

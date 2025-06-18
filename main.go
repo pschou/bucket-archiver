@@ -17,7 +17,7 @@ import (
 
 var (
 	metadataFileName = "metadata.jsonl"
-	sizeCapLimit    = int64(1 * 1024 * 1024 * 1024) // 1 GB
+	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
 )
 
 func main() {
@@ -201,7 +201,7 @@ func main() {
 		}
 
 		if err := uploadFileToBucket(ctx, dstBucket, tgzFilePath, tgzFilePath); err != nil {
-			log.Fatalf("failed to upload tgz file to S3: %v", err)for i in {10..20}; do printf "%0${i}d\n" $i > $i.txt; done
+			log.Fatalf("failed to upload tgz file to S3: %v", err)
 		}
 
 		fmt.Printf("Uploaded %s to bucket %s\n", tgzFilePath, dstBucket)
@@ -222,4 +222,28 @@ func Env(env, def, usage string) string {
 	}
 	fmt.Printf("  %s=%q (default)\n", env, def)
 	return def
+}
+
+// parseByteSize parses a human-readable byte size string (e.g., "1GB", "500MB", "100K") into int64 bytes.
+func parseByteSize(s string) (int64, error) {
+	var size int64
+	var unit string
+	n, err := fmt.Sscanf(s, "%d%s", &size, &unit)
+	if n < 1 || err != nil {
+		return 0, fmt.Errorf("invalid size format: %q", s)
+	}
+	switch unit {
+	case "", "B", "b":
+		return size, nil
+	case "K", "KB", "k", "kb":
+		return size * 1024, nil
+	case "M", "MB", "m", "mb":
+		return size * 1024 * 1024, nil
+	case "G", "GB", "g", "gb":
+		return size * 1024 * 1024 * 1024, nil
+	case "T", "TB", "t", "tb":
+		return size * 1024 * 1024 * 1024 * 1024, nil
+	default:
+		return 0, fmt.Errorf("unknown size unit: %q", unit)
+	}
 }

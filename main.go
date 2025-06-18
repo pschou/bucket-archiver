@@ -77,6 +77,7 @@ func main() {
 		archiveCount int
 		tgzFilePath  = fmt.Sprintf("archive_%07d.tgz", archiveCount)
 
+		readSize         int64
 		uncompressedSize int64
 	)
 
@@ -85,7 +86,6 @@ func main() {
 	for scanner.Scan() {
 		line++
 		_ = line
-		//log.Printf("Processing line %d: %s", line, scanner.Text())
 		if tgzFile == nil || uncompressedSize > 5*1024*1024*1024 {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one
@@ -129,6 +129,9 @@ func main() {
 		if entry.Key == "" {
 			break
 		}
+
+		percent := float64(readSize) / float64(totalSize) * 100
+		fmt.Printf("%d/%d %.2f%%: %s\n", line, objectCount, percent, entry.Key)
 		//fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
 		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)
@@ -165,6 +168,7 @@ func main() {
 			//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
 		}
 		uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
+		readSize += entry.Size         // Accumulate total size for all files processed
 
 		contents.Close()        // Close the temp file after copying
 		os.Remove(tempFilePath) // Clean up temp file after use

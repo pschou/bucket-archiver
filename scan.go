@@ -17,9 +17,9 @@ func init() {
 	// new clamav instance
 	clamavInstance = new(clamav.Clamav)
 	err := clamavInstance.Init(clamav.SCAN_OPTIONS{
-		General:   0,
+		General:   clamav.CL_SCAN_GENERAL_ALLMATCHES,
 		Parse:     ^uint(0), // clamav.CL_SCAN_PARSE_ARCHIVE | clamav.CL_SCAN_PARSE_ELF,
-		Heuristic: 0,
+		Heuristic: clamav.CL_SCAN_HEURISTIC_EXCEEDS_MAX,
 		Mail:      0,
 		Dev:       0,
 	})
@@ -43,6 +43,25 @@ func init() {
 		panic(err)
 	}
 	log.Println("engine compiled successfully")
+
+	// get db version
+	// This is the version of the ClamAV database.
+	// It is useful to know the version of the database to ensure it is up-to-date.
+	// The version is a number that represents the version of the database.
+	dbVersion, err := clamavInstance.EngineGetNum(clamav.CL_ENGINE_DB_VERSION)
+	if err != nil {
+		log.Fatalln("Could not get ClamAV DB version", err)
+	}
+	log.Println("ClamAV DB version:", dbVersion)
+
+	// get db time
+	// This is the time when the database was last updated.
+	// It is useful to know when the database was last updated to ensure it is up-to-date.
+	dbTime, err := clamavInstance.EngineGetNum(clamav.CL_ENGINE_DB_TIME)
+	if err != nil {
+		log.Fatalln("Could not get ClamAV DB time", err)
+	}
+	log.Println("ClamAV DB time:", dbTime)
 
 	// set max scansize
 	// 40 GB

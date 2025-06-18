@@ -84,7 +84,8 @@ func main() {
 	line := 0
 	for scanner.Scan() {
 		line++
-		log.Printf("Processing line %d: %s", line, scanner.Text())
+		_ = line
+		//log.Printf("Processing line %d: %s", line, scanner.Text())
 		if tgzFile == nil || uncompressedSize > 5*1024*1024*1024 {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one
@@ -128,7 +129,7 @@ func main() {
 		if entry.Key == "" {
 			break
 		}
-		fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
+		//fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
 		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)
 		if err != nil {
@@ -136,7 +137,7 @@ func main() {
 		}
 
 		// Scan the file
-		fmt.Printf("Scanning file: %s\n", tempFilePath)
+		//fmt.Printf("Scanning file: %s\n", tempFilePath)
 		if _, err := ScanFile(tempFilePath); err != nil {
 			log.Printf("Error scanning file %s: %v", entry.Key, err)
 			os.Remove(tempFilePath) // Clean up temp file if scanning fails
@@ -161,7 +162,7 @@ func main() {
 		if n, err := io.Copy(tw, contents); err != nil {
 			log.Fatalf("failed to copy contents of %s to tarball: %v", tempFilePath, err)
 		} else {
-			fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
+			//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
 		}
 		uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
 

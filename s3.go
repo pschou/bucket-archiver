@@ -38,10 +38,10 @@ func init() {
 	}
 
 	region = gro.Region
-	fmt.Println("EC2 Environment:")
-	fmt.Println("  AWS_REGION:", gro.Region)
-	fmt.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
-	fmt.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
+	log.Println("EC2 Environment:")
+	log.Println("  AWS_REGION:", gro.Region)
+	log.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
+	log.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
 
 	getConfig := func() error {
 		// Get a credential provider from the configured role attached to the currently running EC2 instance
@@ -110,6 +110,23 @@ func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string)
 
 	// Ensure the temporary file is closed and return its name
 	return tmpFile.Name(), nil
+}
+
+func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, buf []byte) (int, error) {
+	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(srcBucket),
+		Key:    &key,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to download object %s: %w", key, err)
+	}
+	defer getObj.Body.Close()
+
+	n, err := io.ReadFull(getObj.Body, buf)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return n, fmt.Errorf("failed to read object body: %w", err)
+	}
+	return n, nil
 }
 
 func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {

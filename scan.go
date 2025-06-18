@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	clamav "github.com/ca110us/go-clamav"
+	clamav "github.com/hexahigh/go-clamav"
 )
 
 var (

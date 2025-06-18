@@ -4,15 +4,80 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func downloadObjectToTempFile(ctx context.Context, client *s3.Client, srcBucket string, key string) (string, error) {
-	getObj, err := client.GetObject(ctx, &s3.GetObjectInput{
+var (
+	region   string
+	s3client *s3.Client
+)
+
+func init() {
+	/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Fatal("Could not load default config,", err)
+	}*/
+
+	imdsClient := imds.New(imds.Options{})
+	gro, err := imdsClient.GetRegion(context.TODO(), &imds.GetRegionInput{})
+	if err != nil {
+		log.Fatal("Could not get region property,", err)
+	}
+
+	iam, err := imdsClient.GetIAMInfo(context.TODO(), &imds.GetIAMInfoInput{})
+	if err != nil {
+		log.Fatal("Could not get IAM property,", err)
+	}
+
+	region = gro.Region
+	fmt.Println("EC2 Environment:")
+	fmt.Println("  AWS_REGION:", gro.Region)
+	fmt.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
+	fmt.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
+
+	getConfig := func() error {
+		// Get a credential provider from the configured role attached to the currently running EC2 instance
+		provider := ec2rolecreds.New(func(o *ec2rolecreds.Options) {
+			o.Client = imdsClient
+		})
+
+		// Construct a client, wrap the provider in a cache, and supply the region for the desired service
+		s3client = s3.New(s3.Options{
+			Credentials: aws.NewCredentialsCache(provider),
+			Region:      region,
+		})
+		//fmt.Printf("config: %#v\n\n", sdkConfig)
+
+		return nil
+	}
+
+	fmt.Println("Testing call to AWS...")
+	if err := getConfig(); err != nil {
+		log.Fatal("Error getting config:", err)
+	}
+	refreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
+
+	go func() {
+		// Refresh credentials every 20 minutes to ensure low latency on requests
+		// and recovery should the server not have a policy assigned to it yet.
+		for {
+			log.Printf("Pulling new creds for s3Client %#v\n", s3client)
+			time.Sleep(refreshTime)
+			getConfig()
+		}
+	}()
+}
+
+func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string) (string, error) {
+	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
 		Key:    &key,
 	})
@@ -47,14 +112,14 @@ func downloadObjectToTempFile(ctx context.Context, client *s3.Client, srcBucket 
 	return tmpFile.Name(), nil
 }
 
-func uploadFileToBucket(ctx context.Context, client *s3.Client, dstBucket string, key string, filePath string) error {
+func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+	_, err = s3client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(dstBucket),
 		Key:    aws.String(key),
 		Body:   file,

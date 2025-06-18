@@ -16,10 +16,10 @@ type MetaEntry struct {
 	Size int64  `json:"size"`
 }
 
-func loadMetadata(ctx context.Context, client *s3.Client, srcBucket string) (totalSize int64, objectCount int, err error) {
+func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objectCount int, err error) {
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
 	// List objects in source bucket
-	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
+	paginator := s3.NewListObjectsV2Paginator(s3client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(srcBucket),
 	})
 

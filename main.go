@@ -13,9 +13,6 @@ import (
 	"io"
 	"log"
 	"os"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 var (
@@ -36,13 +33,6 @@ func main() {
 
 	ctx := context.Background()
 
-	// Load AWS config
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
-	}
-
-	client := s3.NewFromConfig(cfg)
 	var totalSize int64
 	var objectCount int
 
@@ -132,7 +122,7 @@ func main() {
 		}
 		fmt.Printf("File: %s, Size: %d\n", entry.Name, entry.Size)
 
-		tempFilePath, err := downloadObjectToTempFile(ctx, client, srcBucket, entry.Name)
+		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Name)
 		if err != nil {
 			log.Fatalf("failed to download object %s: %v", entry.Name, err)
 		}
@@ -184,7 +174,7 @@ func main() {
 			log.Fatalf("failed to close tgz file: %v", err)
 		}
 
-		if err := uploadFileToBucket(ctx, client, dstBucket, tgzFilePath, tgzFilePath); err != nil {
+		if err := uploadFileToBucket(ctx, dstBucket, tgzFilePath, tgzFilePath); err != nil {
 			log.Fatalf("failed to upload tgz file to S3: %v", err)
 		}
 
@@ -196,4 +186,14 @@ func main() {
 		log.Fatalf("error reading metadata file: %v", err)
 	}
 
+}
+
+func Env(env, def, usage string) string {
+	fmt.Println("  #", usage)
+	if e := os.Getenv(env); len(e) > 0 {
+		fmt.Printf("  %s=%q\n", usage, env, e)
+		return e
+	}
+	fmt.Printf("  %s=%q (default)\n", env, def)
+	return def
 }

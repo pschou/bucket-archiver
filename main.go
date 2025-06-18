@@ -179,7 +179,7 @@ func main() {
 			// Scan the file
 			//fmt.Printf("Scanning file: %s\n", tempFilePath)
 			_, virusName, err := clamavInstance.ScanMapCB(fmem, entry.Key, context.Background())
-			clamav.CloseMemory(fmem) // Clean up memory after scanning
+			//clamav.CloseMemory(fmem) // Clean up memory after scanning
 
 			if virusName != "" {
 				//log.Printf("Virus found in %q: %s\n", filePath, virusName)

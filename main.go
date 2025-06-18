@@ -53,7 +53,7 @@ func main() {
 	} else if os.IsNotExist(err) {
 		log.Printf("creating metadata file %q", metadataFileName)
 		// Create metadata file if it doesn't exist
-		totalSize, objectCount, err = loadMetadata(ctx, client, srcBucket)
+		totalSize, objectCount, err = loadMetadata(ctx, srcBucket)
 		if err != nil {
 			log.Fatalf("failed to load metadata: %v", err)
 		}

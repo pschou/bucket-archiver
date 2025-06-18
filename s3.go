@@ -140,7 +140,7 @@ func processUpload(ctx context.Context, dstBucket string, filePath string) {
 		if err := uploadFileToBucket(ctx, dstBucket, filePath, filePath); err != nil {
 			log.Printf("Failed to upload %s: %v", filePath, err)
 		} else {
-			log.Printf("Uploaded %s to bucket", filePath, dstBucket)
+			log.Printf("Uploaded %s to bucket %s", filePath, dstBucket)
 		}
 		os.Remove(fileToUpload) // Clean up the temporary file after upload
 	}(filePath)

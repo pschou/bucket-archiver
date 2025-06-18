@@ -95,16 +95,31 @@ func main() {
 
 		readSize         int64
 		uncompressedSize int64
+
+		tempFileMem  []byte
+		tempFilePath string
 	)
+
+	defer func() {
+		if tempFilePath != "" {
+			// Clean up temporary file if it was created
+			os.Remove(tempFilePath)
+		}
+	}()
 
 	log.Println("Starting to process metadata file:", metadataFileName)
 	lineNumber := 0
 	for scanner.Scan() {
+		if tempFilePath != "" {
+			// Clean up temporary file if it was created
+			os.Remove(tempFilePath)
+		}
+		tempFilePath = "" // Reset temp file path for each new line
+
 		lineNumber++
 		if tgzFile == nil || uncompressedSize > sizeCapLimit {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one
-				fmt.Printf("Closing tarball archive_%07d.tgz with uncompressed size %d bytes\n", archiveCount, uncompressedSize)
 
 				// Close the current tar writer and gzip writer
 				if err := tw.Close(); err != nil {
@@ -112,6 +127,16 @@ func main() {
 				}
 				if err := gzipWriter.Close(); err != nil {
 					log.Fatalf("failed to close gzip writer: %v", err)
+				}
+
+				// Calculate compression percentage
+				if stat, err := tgzFile.Stat(); err == nil {
+					compressedSize := stat.Size()
+					if uncompressedSize > 0 {
+						compressionPct := 100 - (float64(compressedSize) * 100 / float64(uncompressedSize))
+						fmt.Printf("Closing %s, compression: %.2f%% (compressed: %d bytes, uncompressed: %d bytes)\n",
+							tgzFilePath, compressionPct, compressedSize, uncompressedSize)
+					}
 				}
 				if err := tgzFile.Close(); err != nil {
 					log.Fatalf("failed to close tgz file: %v", err)
@@ -157,9 +182,6 @@ func main() {
 		fmt.Printf("%d/%d %.2f%%: %s\n", lineNumber, objectCount, percent, entry.Key)
 		//fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
-		var tempFilePath string
-		var tempFileMem []byte
-
 		if entry.Size <= int64(cap(memoryOnlyScan)) {
 			// If the file size is small enough, we can scan it directly in memory
 			// This is a placeholder for memory-only scan logic
@@ -193,7 +215,6 @@ func main() {
 				continue
 			}
 		} else {
-			// For larger files, download them to a temporary file
 			tempFilePath, err = downloadObjectToTempFile(ctx, srcBucket, entry.Key)
 			if err != nil {
 				log.Fatalf("failed to download object %s: %v", entry.Key, err)
@@ -207,12 +228,10 @@ func main() {
 				// If a virus is found, return an error with the virus name
 				// and the file path for clarity.}
 				log.Printf("In %q found %q", entry.Key, virusName)
-				os.Remove(tempFilePath) // Clean up temp file if scanning fails
 				continue
 			} else if err != nil {
 				//log.Println("Error scanning file:", err)
 				log.Printf("In %q error %v", entry.Key, err)
-				os.Remove(tempFilePath) // Clean up temp file if scanning fails
 				continue
 			}
 		}
@@ -251,14 +270,17 @@ func main() {
 			uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
 			readSize += entry.Size         // Accumulate total size for all files processed
 
-			contents.Close()        // Close the temp file after copying
-			os.Remove(tempFilePath) // Clean up temp file after use
+			contents.Close() // Close the temp file after copying
 		}
+	}
+
+	if tempFilePath != "" {
+		// Clean up temporary file if it was created
+		os.Remove(tempFilePath)
 	}
 
 	if tgzFile != nil {
 		// If we have an existing tarball, close it before starting a new one
-		fmt.Printf("Closing tarball archive_%07d.tgz with uncompressed size %d bytes\n", archiveCount, uncompressedSize)
 
 		// Close the current tar writer and gzip writer
 		if err := tw.Close(); err != nil {
@@ -266,6 +288,16 @@ func main() {
 		}
 		if err := gzipWriter.Close(); err != nil {
 			log.Fatalf("failed to close gzip writer: %v", err)
+		}
+
+		// Calculate compression percentage
+		if stat, err := tgzFile.Stat(); err == nil {
+			compressedSize := stat.Size()
+			if uncompressedSize > 0 {
+				compressionPct := 100 - (float64(compressedSize) * 100 / float64(uncompressedSize))
+				fmt.Printf("Closing %s, compression: %.2f%% (compressed: %d bytes, uncompressed: %d bytes)\n",
+					tgzFilePath, compressionPct, compressedSize, uncompressedSize)
+			}
 		}
 		if err := tgzFile.Close(); err != nil {
 			log.Fatalf("failed to close tgz file: %v", err)

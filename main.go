@@ -80,7 +80,9 @@ func main() {
 		uncompressedSize int64
 	)
 
+	log.Println("Starting to process metadata file:", metadataFileName)
 	for scanner.Scan() {
+		log.Printf("Processing line %d: %s", scanner.Line(), scanner.Text())
 		if tgzFile == nil || uncompressedSize > 5*1024*1024*1024 {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	clamav "github.com/hexahigh/go-clamav"
 )
@@ -61,7 +62,7 @@ func init() {
 	if err != nil {
 		log.Fatalln("Could not get ClamAV DB time", err)
 	}
-	log.Println("ClamAV DB time:", dbTime)
+	log.Println("ClamAV DB time:", time.Unix(dbTime, 0))
 
 	// set max scansize
 	// 40 GB

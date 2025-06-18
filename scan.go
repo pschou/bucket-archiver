@@ -14,7 +14,8 @@ var (
 	clamavInstance *clamav.Clamav
 
 	virusScanMeta    = Virus_scan{Vendor: "ClamAV lib", Result: "pass"}
-	virusScanMetaXML []byte // XML representation of the virus scan metadata
+	virusScanMetaXML []byte                // XML representation of the virus scan metadata
+	virusScanMap     = map[string]string{} // Metadata map for virus scan
 )
 
 type Virus_scan struct {
@@ -122,8 +123,9 @@ func init() {
 		log.Fatalln("Could not get max file size", err)
 	}
 	log.Println("Max file size:", maxFileSize)
-	virusScanMetaXML, _ = xml.MarshalIndent(virusScanMeta, "", "  ")
+	virusScanMetaXML, _ = xml.Marshal(virusScanMeta)
 
 	log.Println("ClamAV initialized successfully")
 	log.Println(string(virusScanMetaXML))
+	virusScanMap["scan"] = string(virusScanMetaXML)
 }

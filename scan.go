@@ -62,7 +62,7 @@ func init() {
 	if err != nil {
 		log.Fatalln("Could not get ClamAV DB time", err)
 	}
-	log.Println("ClamAV DB time:", time.Unix(dbTime, 0))
+	log.Println("ClamAV DB time:", time.Unix(int64(dbTime), 0))
 
 	// set max scansize
 	// 40 GB

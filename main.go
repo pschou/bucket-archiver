@@ -6,6 +6,7 @@ package main
 import (
 	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -13,11 +14,14 @@ import (
 	"io"
 	"log"
 	"os"
+
+	clamav "github.com/hexahigh/go-clamav"
 )
 
 var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
+	memoryOnlyScan   = make([]byte, 1*1024*1024)     // Placeholder for memory-only scan logic
 )
 
 func main() {
@@ -153,17 +157,64 @@ func main() {
 		fmt.Printf("%d/%d %.2f%%: %s\n", lineNumber, objectCount, percent, entry.Key)
 		//fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
-		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)
-		if err != nil {
-			log.Fatalf("failed to download object %s: %v", entry.Key, err)
-		}
+		var tempFilePath string
+		var tempFileMem []byte
 
-		// Scan the file
-		//fmt.Printf("Scanning file: %s\n", tempFilePath)
-		if _, err := ScanFile(tempFilePath); err != nil {
-			log.Printf("Error scanning file %s: %v", entry.Key, err)
-			os.Remove(tempFilePath) // Clean up temp file if scanning fails
-			continue                // Skip this file if scanning fails
+		if entry.Size <= int64(cap(memoryOnlyScan)) {
+			// If the file size is small enough, we can scan it directly in memory
+			// This is a placeholder for memory-only scan logic
+			// fmt.Printf("Scanning %s in memory\n", entry.Key)
+			n, err := downloadObjectToBuffer(ctx, srcBucket, entry.Key, memoryOnlyScan)
+			if err != nil {
+				log.Printf("Error downloading object %s to memory: %v", entry.Key, err)
+				continue // Skip this file if download fails
+			}
+			tempFileMem = memoryOnlyScan[:n] // Use the downloaded bytes
+
+			fmem := clamav.OpenMemory(tempFileMem)
+			if fmem == nil {
+				log.Printf("Failed to open memory for scanning %s", entry.Key)
+				continue // Skip this file if memory scan fails
+			}
+			// Scan the file
+			//fmt.Printf("Scanning file: %s\n", tempFilePath)
+			_, virusName, err := clamavInstance.ScanMapCB(fmem, entry.Key, context.Background())
+			clamav.CloseMemory(fmem) // Clean up memory after scanning
+
+			if virusName != "" {
+				//log.Printf("Virus found in %q: %s\n", filePath, virusName)
+				// If a virus is found, return an error with the virus name
+				// and the file path for clarity.}
+				log.Printf("In %q found %q", entry.Key, virusName)
+				continue
+			} else if err != nil {
+				//log.Println("Error scanning file:", err)
+				log.Printf("In %q error %v", entry.Key, err)
+				continue
+			}
+		} else {
+			// For larger files, download them to a temporary file
+			tempFilePath, err = downloadObjectToTempFile(ctx, srcBucket, entry.Key)
+			if err != nil {
+				log.Fatalf("failed to download object %s: %v", entry.Key, err)
+			}
+
+			// Scan the file
+			//fmt.Printf("Scanning file: %s\n", tempFilePath)
+			_, virusName, err := clamavInstance.ScanFile(tempFilePath)
+			if virusName != "" {
+				//log.Printf("Virus found in %q: %s\n", filePath, virusName)
+				// If a virus is found, return an error with the virus name
+				// and the file path for clarity.}
+				log.Printf("In %q found %q", entry.Key, virusName)
+				os.Remove(tempFilePath) // Clean up temp file if scanning fails
+				continue
+			} else if err != nil {
+				//log.Println("Error scanning file:", err)
+				log.Printf("In %q error %v", entry.Key, err)
+				os.Remove(tempFilePath) // Clean up temp file if scanning fails
+				continue
+			}
 		}
 
 		// Add metadata file to tarball
@@ -176,21 +227,33 @@ func main() {
 			log.Fatalf("failed to write metadata tar header: %v", err)
 		}
 
-		contents, err := os.Open(tempFilePath) // Open the temp file to read its content
-		if err != nil {
-			log.Fatalf("failed to open temp file %s: %v", tempFilePath, err)
-		}
+		if tempFilePath == "" {
+			// If we scanned the file in memory, write the memory buffer to the tarball
+			if _, err := io.Copy(tw, bytes.NewReader(tempFileMem)); err != nil {
+				log.Fatalf("failed to copy contents of %s to tarball: %v", tempFilePath, err)
+			} else {
+				//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
+			}
 
-		if _, err := io.Copy(tw, contents); err != nil {
-			log.Fatalf("failed to copy contents of %s to tarball: %v", tempFilePath, err)
+			fmt.Printf("Wrote %d bytes from memory buffer to tarball\n", len(tempFileMem))
 		} else {
-			//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
-		}
-		uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
-		readSize += entry.Size         // Accumulate total size for all files processed
+			// If we downloaded the file to a temporary file, read its contents
+			contents, err := os.Open(tempFilePath) // Open the temp file to read its content
+			if err != nil {
+				log.Fatalf("failed to open temp file %s: %v", tempFilePath, err)
+			}
 
-		contents.Close()        // Close the temp file after copying
-		os.Remove(tempFilePath) // Clean up temp file after use
+			if _, err := io.Copy(tw, contents); err != nil {
+				log.Fatalf("failed to copy contents of %s to tarball: %v", tempFilePath, err)
+			} else {
+				//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
+			}
+			uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
+			readSize += entry.Size         // Accumulate total size for all files processed
+
+			contents.Close()        // Close the temp file after copying
+			os.Remove(tempFilePath) // Clean up temp file after use
+		}
 	}
 
 	if tgzFile != nil {

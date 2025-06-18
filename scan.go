@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -109,25 +108,4 @@ func init() {
 	log.Println("Max file size:", maxFileSize)
 
 	log.Println("ClamAV initialized successfully")
-}
-
-// ScanFileSerial scans a single file, ensuring only one scan runs at any given instance.
-func ScanFile(filePath string) (scanned uint, err error) {
-	scanMutex <- struct{}{}        // acquire semaphore (only 1 allowed)
-	defer func() { <-scanMutex }() // release semaphore
-
-	// scan
-	var virusName string
-	scanned, virusName, err = clamavInstance.ScanFile(filePath)
-	if virusName != "" {
-		//log.Printf("Virus found in %q: %s\n", filePath, virusName)
-		// If a virus is found, return an error with the virus name
-		// and the file path for clarity.}
-		return scanned, fmt.Errorf("In %q found %q", filePath, virusName)
-	} else if err != nil {
-		//log.Println("Error scanning file:", err)
-		return scanned, fmt.Errorf("error scanning file %q: %w", filePath, err)
-	}
-
-	return scanned, nil
 }

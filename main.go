@@ -150,8 +150,10 @@ func main() {
 			log.Fatalf("failed to open temp file %s: %v", tempFilePath, err)
 		}
 
-		if _, err = io.Copy(tw, contents); err != nil {
+		if n, err := io.Copy(tw, contents); err != nil {
 			log.Fatalf("failed to copy contents of %s to tarball: %v", tempFilePath, err)
+		} else {
+			fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
 		}
 		uncompressedSize += entry.Size // Accumulate uncompressed size for the tarball
 

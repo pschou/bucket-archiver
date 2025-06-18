@@ -18,7 +18,7 @@ func init() {
 	clamavInstance = new(clamav.Clamav)
 	err := clamavInstance.Init(clamav.SCAN_OPTIONS{
 		General:   0,
-		Parse:     clamav.CL_SCAN_PARSE_ARCHIVE | clamav.CL_SCAN_PARSE_ELF,
+		Parse:     ^uint(0), // clamav.CL_SCAN_PARSE_ARCHIVE | clamav.CL_SCAN_PARSE_ELF,
 		Heuristic: 0,
 		Mail:      0,
 		Dev:       0,

@@ -26,3 +26,5 @@ github.com/aws/smithy-go v1.22.2 h1:6D9hW43xKFrRx/tXXfAlIZc4JI+yQe6snnWcQyxSyLQ=
 github.com/aws/smithy-go v1.22.2/go.mod h1:irrKGvNn1InZwb2d7fkIRNucdfwR8R+Ts3wxYa/cJHg=
 github.com/hexahigh/go-clamav v0.7.1 h1:blknoCm2D9DWwWJcZb+Gn4wiRJ1Yj68lavo/xE8o5qk=
 github.com/hexahigh/go-clamav v0.7.1/go.mod h1:7Yh4SXzGWqx83yjM9sXmQ70ucip+QR//PC0QbNjXvlA=
+github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
+github.com/remeh/sizedwaitgroup v1.0.0/go.mod h1:3j2R4OIe/SeS6YDhICBy22RWjJC5eNCJ1V+9+NVNYlo=

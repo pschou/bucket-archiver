@@ -121,8 +121,8 @@ func main() {
 					log.Fatalf("failed to upload tgz file to S3: %v", err)
 				}
 
-				fmt.Printf("Uploaded %s to bucket %s\n", tgzFilePath, dstBucket)
-				os.Remove(tgzFilePath)
+				fmt.Printf("Uploading %s to bucket %s\n", tgzFilePath, dstBucket)
+				processUpload(ctx, dstBucket, tgzFilePath)
 
 				archiveCount++       // Increment archive count for the next tarball
 				uncompressedSize = 0 // Reset uncompressed size for the next tarball
@@ -235,7 +235,7 @@ func main() {
 				//fmt.Printf("Copied %d bytes from %s to tarball\n", n, tempFilePath)
 			}
 
-			fmt.Printf("Wrote %d bytes from memory buffer to tarball\n", len(tempFileMem))
+			//fmt.Printf("Wrote %d bytes from memory buffer to tarball\n", len(tempFileMem))
 		} else {
 			// If we downloaded the file to a temporary file, read its contents
 			contents, err := os.Open(tempFilePath) // Open the temp file to read its content
@@ -275,9 +275,12 @@ func main() {
 			log.Fatalf("failed to upload tgz file to S3: %v", err)
 		}
 
-		fmt.Printf("Uploaded %s to bucket %s\n", tgzFilePath, dstBucket)
-		os.Remove(tgzFilePath)
+		fmt.Printf("Uploading %s to bucket %s\n", tgzFilePath, dstBucket)
+		processUpload(ctx, dstBucket, tgzFilePath)
 	}
+
+	uploadSWD.Wait() // Wait for all uploads to finish
+	log.Println("All uploads completed successfully.")
 
 	if err := scanner.Err(); err != nil {
 		log.Fatalf("error reading metadata file: %v", err)

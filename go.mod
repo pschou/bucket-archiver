@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.31
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.80.2
 	github.com/hexahigh/go-clamav v0.7.1
+	github.com/remeh/sizedwaitgroup v1.0.0
 )
 
 require (

@@ -13,11 +13,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
 	region   string
 	s3client *s3.Client
+
+	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
 )
 
 func init() {
@@ -127,6 +131,19 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, b
 		return n, fmt.Errorf("failed to read object body: %w", err)
 	}
 	return n, nil
+}
+
+func processUpload(ctx context.Context, dstBucket string, filePath string) {
+	uploadSWD.Add()
+	go func(fileToUpload string) {
+		defer uploadSWD.Done()
+		if err := uploadFileToBucket(ctx, dstBucket, filePath, filePath); err != nil {
+			log.Printf("Failed to upload %s: %v", filePath, err)
+		} else {
+			log.Printf("Uploaded %s to bucket", filePath, dstBucket)
+		}
+		os.Remove(fileToUpload) // Clean up the temporary file after upload
+	}(filePath)
 }
 
 func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {

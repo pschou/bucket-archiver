@@ -17,6 +17,7 @@ import (
 
 var (
 	metadataFileName = "metadata.jsonl"
+	sizeCapLimit    = int64(1 * 1024 * 1024 * 1024) // 1 GB
 )
 
 func main() {
@@ -25,6 +26,17 @@ func main() {
 	log.Println("Source bucket:", srcBucket)
 	dstBucket := os.Getenv("DST_BUCKET")
 	log.Println("Destination bucket:", dstBucket)
+
+	// Parse SIZECAP environment variable if set, otherwise use default
+	if sizeCapStr := os.Getenv("SIZECAP"); sizeCapStr != "" {
+		parsed, err := parseByteSize(sizeCapStr)
+		if err != nil {
+			log.Fatalf("failed to parse SIZECAP: %v", err)
+		}
+		sizeCapLimit = parsed
+		log.Printf("Using sizeCapLimit from SIZECAP env: %d bytes", sizeCapLimit)
+	}
+	log.Printf("Size cap limit for each tarball contents: %d bytes", sizeCapLimit)
 
 	// Ensure source and destination buckets are set
 	if srcBucket == "" || dstBucket == "" {
@@ -82,11 +94,10 @@ func main() {
 	)
 
 	log.Println("Starting to process metadata file:", metadataFileName)
-	line := 0
+	lineNumber := 0
 	for scanner.Scan() {
-		line++
-		_ = line
-		if tgzFile == nil || uncompressedSize > 5*1024*1024*1024 {
+		lineNumber++
+		if tgzFile == nil || uncompressedSize > sizeCapLimit {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one
 				fmt.Printf("Closing tarball %s with uncompressed size %d bytes\n", tgzFilePath, uncompressedSize)
@@ -131,7 +142,7 @@ func main() {
 		}
 
 		percent := float64(readSize) / float64(totalSize) * 100
-		fmt.Printf("%d/%d %.2f%%: %s\n", line, objectCount, percent, entry.Key)
+		fmt.Printf("%d/%d %.2f%%: %s\n", lineNumber, objectCount, percent, entry.Key)
 		//fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
 		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)
@@ -190,7 +201,7 @@ func main() {
 		}
 
 		if err := uploadFileToBucket(ctx, dstBucket, tgzFilePath, tgzFilePath); err != nil {
-			log.Fatalf("failed to upload tgz file to S3: %v", err)
+			log.Fatalf("failed to upload tgz file to S3: %v", err)for i in {10..20}; do printf "%0${i}d\n" $i > $i.txt; done
 		}
 
 		fmt.Printf("Uploaded %s to bucket %s\n", tgzFilePath, dstBucket)

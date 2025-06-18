@@ -118,6 +118,7 @@ func main() {
 		var entry MetaEntry
 		line := scanner.Bytes()
 		if err := json.Unmarshal(line, &entry); err != nil {
+			log.Printf("failed to unmarshal line %q: %v", line, err)
 			break // likely EOF or malformed line
 		}
 		fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)

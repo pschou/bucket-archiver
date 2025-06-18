@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +13,7 @@ import (
 )
 
 type MetaEntry struct {
-	Name string `json:"name"`
+	Key  string `json:"key"`
 	Size int64  `json:"size"`
 }
 
@@ -63,8 +64,9 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objec
 
 			// Write metadata line
 			// Format: {"name":"object_key","size":object_size}
-			metadataLine := fmt.Sprintf(`{"name":%q,"size":%d}`+"\n", *obj.Key, *obj.Size)
-			metadataBuf.WriteString(metadataLine)
+			dat, _ := json.Marshal(MetaEntry{Key: *obj.Key, Size: *obj.Size})
+			metadataBuf.Write(dat)
+			metadataBuf.WriteByte('\n')
 		}
 	}
 

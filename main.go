@@ -120,24 +120,24 @@ func main() {
 		if err := json.Unmarshal(line, &entry); err != nil {
 			break // likely EOF or malformed line
 		}
-		fmt.Printf("File: %s, Size: %d\n", entry.Name, entry.Size)
+		fmt.Printf("Key: %s, Size: %d\n", entry.Key, entry.Size)
 
-		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Name)
+		tempFilePath, err := downloadObjectToTempFile(ctx, srcBucket, entry.Key)
 		if err != nil {
-			log.Fatalf("failed to download object %s: %v", entry.Name, err)
+			log.Fatalf("failed to download object %s: %v", entry.Key, err)
 		}
 
 		// Scan the file
 		fmt.Printf("Scanning file: %s\n", tempFilePath)
 		if _, err := ScanFile(tempFilePath); err != nil {
-			log.Printf("Error scanning file %s: %v", entry.Name, err)
+			log.Printf("Error scanning file %s: %v", entry.Key, err)
 			os.Remove(tempFilePath) // Clean up temp file if scanning fails
 			continue                // Skip this file if scanning fails
 		}
 
 		// Add metadata file to tarball
 		metadataHeader := &tar.Header{
-			Name: entry.Name,
+			Name: entry.Key,
 			Mode: 0600,
 			Size: entry.Size,
 		}

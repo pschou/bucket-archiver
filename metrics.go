@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -18,7 +19,7 @@ var (
 	metricsTicker   *time.Ticker
 )
 
-func StartMetrics() {
+func StartMetrics(ctx context.Context) {
 	// Start metrics reporter goroutine
 	var lastBytes int64
 	var lastTime = time.Now()
@@ -27,23 +28,29 @@ func StartMetrics() {
 	go func() {
 		//defer metricsTicker.Stop()
 		log.Println("Starting metrics...")
-		for range metricsTicker.C {
-			curBytes := atomic.LoadInt64(&DownloadedBytes)
-			now := time.Now()
-			elapsed := now.Sub(lastTime)
+		for {
+			select {
+			case <-ctx.Done():
+				// Context is done, exit the goroutine
+				return
+			case <-metricsTicker.C:
+				curBytes := atomic.LoadInt64(&DownloadedBytes)
+				now := time.Now()
+				elapsed := now.Sub(lastTime)
 
-			fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)", DownloadedFiles, TotalFiles,
-				humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed))
-			lastBytes = curBytes
-			lastTime = now
+				fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)", DownloadedFiles, TotalFiles,
+					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed))
+				lastBytes = curBytes
+				lastTime = now
+			}
 		}
 	}()
 }
 
 func StopMetrics() {
 	if metricsTicker != nil {
-		metricsTicker.Stop()
 		log.Println("Metrics stopped...")
+		metricsTicker.Stop()
 	}
 }
 

@@ -70,7 +70,7 @@ func main() {
 	// Read the metadata and send it to the toDownload pipline
 	go ReadMetadata(ctx, toDownload)
 
-	StartMetrics()
+	StartMetrics(ctx)
 
 	// Consume the toDownload, download the file, and send to the downloaded pipeline
 	go Downloader(ctx, toDownload, downloadedFiles)
@@ -82,8 +82,8 @@ func main() {
 	go Archiver(ctx, scannedFiles, ArchiveFiles)
 
 	go Uploader(ctx, ArchiveFiles, Done)
-	StopMetrics()
 
 	<-Done // Wait for all uploads to finish
+	StopMetrics()
 	log.Println("All uploads completed successfully.")
 }

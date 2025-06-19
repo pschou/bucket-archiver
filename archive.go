@@ -49,11 +49,15 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				tgzFile = OpenArchive()
 			}
 
+			if debug {
+				log.Println("Written", archiveBytesWritten, "Size Cap", sizeCapLimit)
+			}
 			if archiveBytesWritten > sizeCapLimit {
 				// If the internal size is above the capacity limit, roll files
 				CloseArchive()
 				doneCh <- ArchiveFile{Filename: tgzFile}
 				tgzFile = OpenArchive()
+				archiveBytesWritten = 0
 			}
 
 			if debug {

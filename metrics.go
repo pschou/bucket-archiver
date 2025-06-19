@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"sync/atomic"
 	"time"
@@ -25,7 +26,8 @@ func StartMetrics(ctx context.Context) {
 
 	metricsTicker = time.NewTicker(250 * time.Millisecond)
 	go func() {
-		defer metricsTicker.Stop()
+		//defer metricsTicker.Stop()
+		log.Println("Starting metrics...")
 		for {
 			select {
 			case <-ctx.Done():
@@ -42,6 +44,8 @@ func StartMetrics(ctx context.Context) {
 				lastTime = now
 			}
 		}
+		log.Println("Metrics stopped...")
+
 	}()
 }
 

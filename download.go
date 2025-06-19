@@ -46,6 +46,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 			break
 		case task, ok := <-tasksCh:
 			if !ok {
+				swg.Wait()
 				log.Println("Closing downloader...")
 				return
 			}

@@ -216,6 +216,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 				doneCh <- ScannedFile{
 					Size:     task.Size,
 					Filename: task.Filename,
+					TempFile: task.TempFile,
 					Bytes:    task.Bytes,
 				}
 			} else {

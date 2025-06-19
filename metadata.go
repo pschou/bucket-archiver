@@ -89,6 +89,7 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 }
 
 func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
+	log.Println("Reading in", metadataFileName, "for processing...")
 	defer close(doFiles)
 
 	// Open metadata file and parse each line for file size and name

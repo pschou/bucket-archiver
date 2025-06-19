@@ -57,8 +57,8 @@ func main() {
 	log.Printf("Total objects: %d, Total size: %s", TotalFiles, humanizeBytes(TotalBytes))
 
 	scanReady.Wait() // Wait for the ClamAV instance to be ready
-	log.Println("Starting to process files:", metadataFileName)
 
+	log.Println("Making pipeline channels.")
 	var (
 		toDownload      = make(chan DownloadTask, 10)
 		downloadedFiles = make(chan DownloadedFile, 10)
@@ -67,7 +67,7 @@ func main() {
 	)
 
 	// Read the metadata and send it to the toDownload pipline
-	ReadMetadata(ctx, toDownload)
+	go ReadMetadata(ctx, toDownload)
 
 	StartMetrics(ctx)
 

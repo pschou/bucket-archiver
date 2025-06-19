@@ -7,6 +7,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 )
 
 var (
@@ -60,12 +61,19 @@ func main() {
 
 	log.Println("Making pipeline channels.")
 	var (
-		toDownload      = make(chan DownloadTask, 1)
-		downloadedFiles = make(chan DownloadedFile, 1)
-		scannedFiles    = make(chan ScannedFile, 1)
-		ArchiveFiles    = make(chan ArchiveFile, 1)
+		toDownload      = make(chan DownloadTask, 2)
+		downloadedFiles = make(chan DownloadedFile, 2)
+		scannedFiles    = make(chan ScannedFile, 2)
+		ArchiveFiles    = make(chan ArchiveFile, 2)
 		Done            = make(chan struct{})
 	)
+
+	go func() {
+		for {
+			errEvent := <-errCh
+			log.Println(errEvent.Err)
+		}
+	}()
 
 	// Read the metadata and send it to the toDownload pipline
 	go ReadMetadata(ctx, toDownload)
@@ -86,4 +94,5 @@ func main() {
 	<-Done // Wait for all uploads to finish
 	StopMetrics()
 	log.Println("All uploads completed successfully.")
+	time.Sleep(time.Second)
 }

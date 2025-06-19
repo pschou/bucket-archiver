@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 )
 
 // Uploader listens for ArchiveFile on tasksCh, uploads them, and when the channel is closed sends a done
@@ -26,6 +27,7 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 			go func(task ArchiveFile) {
 				defer wg.Done()
 				uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8)
+				atomic.AddInt64(&UploadedFiles, 1)
 			}(task)
 		}
 	}

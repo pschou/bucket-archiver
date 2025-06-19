@@ -61,7 +61,6 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 			}
 
 			go func(task DownloadTask, parts int) {
-				var tempFilePath string
 				defer func() {
 					for i := 0; i < parts; i++ {
 						swg.Done() // Mark the part as done

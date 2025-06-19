@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -97,6 +98,112 @@ func init() {
 		}()
 		awscliLog.Println("S3 client initialized successfully")
 	}()
+}
+
+func downloadObjectInParts(ctx context.Context, srcBucket string, key string, size int64, partCount int,
+	currentObj, remainObj int, remainBytes int64) (string, error) {
+
+	s3Ready.Wait()
+
+	ext := filepath.Ext(key)
+	if len(ext) == 0 {
+		ext = ".tmp"
+	}
+
+	outFile, err := os.CreateTemp("", "s3obj-*"+ext)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer outFile.Close()
+
+	if err := outFile.Truncate(size); err != nil {
+		return "", fmt.Errorf("failed to pre-allocate file: %w", err)
+	}
+
+	partSize := size / int64(partCount)
+	var wg sync.WaitGroup
+	errCh := make(chan error, partCount)
+
+	var downloadedBytes int64 // atomic counter
+
+	// Status output goroutine
+	stopStatus := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+		var lastBytes int64
+		var lastTime = time.Now()
+		for {
+			select {
+			case <-stopStatus:
+				return
+			case <-ticker.C:
+				curBytes := atomic.LoadInt64(&downloadedBytes)
+				now := time.Now()
+				elapsed := now.Sub(lastTime).Seconds()
+				rate := float64(curBytes-lastBytes) / elapsed
+				fmt.Fprintf(os.Stderr, "Downloading %s: %d/%d bytes (%.2f KB/s)\n", key, curBytes, size, rate/1024)
+				lastBytes = curBytes
+				lastTime = now
+			}
+		}
+	}()
+
+	for i := 0; i < partCount; i++ {
+		start := int64(i) * partSize
+		end := start + partSize - 1
+		if i == partCount-1 {
+			end = size - 1
+		}
+
+		wg.Add(1)
+		go func(partIdx int, start, end int64) {
+			defer wg.Done()
+			rangeHeader := fmt.Sprintf("bytes=%d-%d", start, end)
+			getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
+				Bucket: aws.String(srcBucket),
+				Key:    aws.String(key),
+				Range:  aws.String(rangeHeader),
+			})
+			if err != nil {
+				errCh <- fmt.Errorf("part %d: failed to get object: %w", partIdx, err)
+				return
+			}
+			defer getObj.Body.Close()
+
+			buf := make([]byte, 32*1024)
+			offset := start
+			for {
+				n, readErr := getObj.Body.Read(buf)
+				if n > 0 {
+					_, writeErr := outFile.WriteAt(buf[:n], offset)
+					if writeErr != nil {
+						errCh <- fmt.Errorf("part %d: write error: %w", partIdx, writeErr)
+						return
+					}
+					atomic.AddInt64(&downloadedBytes, int64(n))
+					offset += int64(n)
+				}
+				if readErr == io.EOF {
+					break
+				}
+				if readErr != nil {
+					errCh <- fmt.Errorf("part %d: read error: %w", partIdx, readErr)
+					return
+				}
+			}
+		}(i, start, end)
+	}
+
+	wg.Wait()
+	close(errCh)
+	close(stopStatus)
+	for e := range errCh {
+		if e != nil {
+			return "", e
+		}
+	}
+	return outFile.Name(), nil
 }
 
 func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string,

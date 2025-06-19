@@ -211,7 +211,7 @@ func main() {
 				continue
 			}
 		} else {
-			tempFilePath, err = downloadObjectToTempFile(ctx, srcBucket, entry.Key,
+			tempFilePath, err = downloadObjectInParts(ctx, srcBucket, entry.Key, entry.Size, 8,
 				lineNumber, objectCount-lineNumber, totalSize-readSize)
 			if err != nil {
 				log.Fatalf("failed to download object %s: %v", entry.Key, err)

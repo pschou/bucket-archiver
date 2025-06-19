@@ -40,6 +40,11 @@ func init() {
 	srcBucket = Env("SRC_BUCKET", "mySourceBucket", "The source S3 bucket name")
 	dstBucket = Env("DST_BUCKET", "myDestinationBucket", "The destination S3 bucket name")
 
+	// Ensure source and destination buckets are set
+	if srcBucket == "" || dstBucket == "" {
+		awscliLog.Fatal("SRC_BUCKET and DST_BUCKET environment variables must be set")
+	}
+
 	s3Ready.Add(1) // Add to wait group to signal when the S3 client is ready
 	go func() {
 		defer s3Ready.Done() // Signal that the S3 client is ready
@@ -100,8 +105,7 @@ func init() {
 	}()
 }
 
-func downloadObjectInParts(ctx context.Context, srcBucket string, key string, size int64, partCount int,
-	currentObj, totalObj int, remainBytes int64) (string, error) {
+func downloadObjectInParts(ctx context.Context, srcBucket string, key string, size int64, partCount int) (string, error) {
 
 	s3Ready.Wait()
 
@@ -114,40 +118,20 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer outFile.Close()
 
 	if err := outFile.Truncate(size); err != nil {
+		outFile.Close()
+		os.Remove(outFile.Name())
 		return "", fmt.Errorf("failed to pre-allocate file: %w", err)
 	}
+	defer outFile.Close()
 
-	partSize := size / int64(partCount)
-	var wg sync.WaitGroup
-	errCh := make(chan error, partCount)
-
-	var downloadedBytes int64 // atomic counter
-
-	// Status output goroutine
-	stopStatus := make(chan struct{})
-	go func() {
-		ticker := time.NewTicker(250 * time.Millisecond)
-		defer ticker.Stop()
-		var lastBytes int64
-		var lastTime = time.Now()
-		for {
-			select {
-			case <-stopStatus:
-				return
-			case <-ticker.C:
-				curBytes := atomic.LoadInt64(&downloadedBytes)
-				now := time.Now()
-				elapsed := now.Sub(lastTime)
-				fmt.Fprintf(os.Stderr, "%d/%d %s: %s/%s bytes (%s)\n", currentObj, totalObj, key,
-					humanizeBytes(curBytes), humanizeBytes(size), humanizeRate(curBytes-lastBytes, elapsed))
-				lastBytes = curBytes
-				lastTime = now
-			}
-		}
-	}()
+	var (
+		partSize = size / int64(partCount)
+		wg       sync.WaitGroup
+		errCh    = make(chan error, partCount)
+		proceed  = true
+	)
 
 	for i := 0; i < partCount; i++ {
 		start := int64(i) * partSize
@@ -166,28 +150,35 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 				Range:  aws.String(rangeHeader),
 			})
 			if err != nil {
+				proceed = false
+				// If we encounter an error, we stop processing and report the error
 				errCh <- fmt.Errorf("part %d: failed to get object: %w", partIdx, err)
 				return
 			}
 			defer getObj.Body.Close()
 
-			buf := make([]byte, 32*1024)
+			buf := bufPool32.Get().([]byte)
+			defer bufPool32.Put(buf)
 			offset := start
-			for {
+			for proceed {
 				n, readErr := getObj.Body.Read(buf)
 				if n > 0 {
 					_, writeErr := outFile.WriteAt(buf[:n], offset)
 					if writeErr != nil {
+						proceed = false
+						// If we encounter a write error, we stop writing and report the error
 						errCh <- fmt.Errorf("part %d: write error: %w", partIdx, writeErr)
 						return
 					}
-					atomic.AddInt64(&downloadedBytes, int64(n))
+					atomic.AddInt64(&DownloadedBytes, int64(n))
 					offset += int64(n)
 				}
 				if readErr == io.EOF {
 					break
 				}
 				if readErr != nil {
+					proceed = false
+					// If we encounter an error, we stop reading and report the error
 					errCh <- fmt.Errorf("part %d: read error: %w", partIdx, readErr)
 					return
 				}
@@ -197,56 +188,19 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 
 	wg.Wait()
 	close(errCh)
-	close(stopStatus)
 	for e := range errCh {
 		if e != nil {
+			proceed = false
+			outFile.Close()
+			os.Remove(outFile.Name())
 			return "", e
 		}
 	}
+
 	return outFile.Name(), nil
 }
 
-func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string,
-	currentObj, remainObj int, remainBytes int64) (string, error) {
-
-	// Download an S3 object to a temporary file with the same extension as the S3 object
-	s3Ready.Wait() // Wait for the S3 client to be ready
-	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(srcBucket),
-		Key:    &key,
-	})
-
-	// Check if the object was successfully retrieved
-	if err != nil {
-		return "", fmt.Errorf("failed to download object %s: %w", key, err)
-	}
-
-	// Create a temporary file with the same extension as the S3 object
-	// If the object has no extension, use .tmp
-	ext := filepath.Ext(key)
-	if len(ext) == 0 {
-		ext = ".tmp"
-	}
-
-	// Create a temporary file in the system's temp directory
-	tmpFile, err := os.CreateTemp("", "s3obj-*"+ext)
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-
-	// Ensure the temporary file is closed after use
-	defer tmpFile.Close()
-
-	// Write the content of the S3 object to the temporary file using progressCp
-	if _, err := progressCp(tmpFile, getObj.Body, *getObj.ContentLength, key, currentObj, remainObj, remainBytes); err != nil {
-		return "", fmt.Errorf("failed to write to temp file: %w", err)
-	}
-
-	// Ensure the temporary file is closed and return its name
-	return tmpFile.Name(), nil
-}
-
-func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, buf []byte) (int, error) {
+func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, localBuf []byte) (int, error) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
@@ -257,13 +211,26 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, b
 	}
 	defer getObj.Body.Close()
 
-	n, err := io.ReadFull(getObj.Body, buf)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-		return n, fmt.Errorf("failed to read object body: %w", err)
+	var total int
+
+	for len(localBuf) > 0 {
+		n, readErr := getObj.Body.Read(localBuf)
+		if n > 0 {
+			localBuf = localBuf[n:] // Reduce the buffer size
+			atomic.AddInt64(&DownloadedBytes, int64(n))
+			total += n
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return total, fmt.Errorf("failed to read object body: %w", readErr)
+		}
 	}
-	return n, nil
+	return total, nil
 }
 
+/*
 func processUpload(ctx context.Context, dstBucket string, filePath string) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
 	uploadSWD.Add()
@@ -299,3 +266,4 @@ func uploadFileToBucket(ctx context.Context, dstBucket string, key string, fileP
 
 	return nil
 }
+*/

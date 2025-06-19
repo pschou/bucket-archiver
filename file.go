@@ -11,7 +11,7 @@ import (
 
 // FileStats holds the total file count and size.
 type FileStats struct {
-	Count int   `json:"total_objects"`
+	Count int64 `json:"total_objects"`
 	Size  int64 `json:"total_size"`
 }
 

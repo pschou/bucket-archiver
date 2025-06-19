@@ -17,7 +17,7 @@ type MetaEntry struct {
 	Size int64  `json:"size"`
 }
 
-func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objectCount int, err error) {
+func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount int64, err error) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
 	// List objects in source bucket
@@ -86,4 +86,37 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objec
 	}
 
 	return
+}
+
+func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
+	defer close(doFiles)
+
+	// Open metadata file and parse each line for file size and name
+	metadataFile, err := os.Open(metadataFileName)
+	if err != nil {
+		log.Fatalf("failed to open metadata file: %v", err)
+	}
+	defer metadataFile.Close()
+
+	scanner := bufio.NewScanner(metadataFile)
+
+	//lineNumber := 0
+	for scanner.Scan() {
+		// Parse each line as JSON to get file metadata
+		// Assuming each line in metadata.jsonl is a JSON object with "name" and "size" fields
+		var entry MetaEntry
+		line := scanner.Bytes()
+		if err := json.Unmarshal(line, &entry); err != nil {
+			log.Printf("failed to unmarshal line %q: %v", line, err)
+			break // likely EOF or malformed line
+		}
+		if entry.Key == "" {
+			break
+		}
+		doFiles <- DownloadTask{Filename: entry.Key, Size: entry.Size}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatalf("error reading metadata file: %v", err)
+	}
 }

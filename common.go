@@ -1,0 +1,55 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"sync"
+)
+
+var (
+	// bufPool is a sync.Pool to reuse byte slices for copying data
+	bufPool32 = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 32*1024)
+		},
+	} // bufPool is a sync.Pool to reuse byte slices for copying data
+	bufPool96 = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 96*1024)
+		},
+	}
+)
+
+func Env(env, def, usage string) string {
+	fmt.Println("  #", usage)
+	if e := os.Getenv(env); len(e) > 0 {
+		fmt.Printf("  %s=%q\n", env, e)
+		return e
+	}
+	fmt.Printf("  %s=%q (default)\n", env, def)
+	return def
+}
+
+// parseByteSize parses a human-readable byte size string (e.g., "1GB", "500MB", "100K") into int64 bytes.
+func parseByteSize(s string) (int64, error) {
+	var size int64
+	var unit string
+	n, err := fmt.Sscanf(s, "%d%s", &size, &unit)
+	if n < 1 || err != nil {
+		return 0, fmt.Errorf("invalid size format: %q", s)
+	}
+	switch unit {
+	case "", "B", "b":
+		return size, nil
+	case "K", "KB", "k", "kb":
+		return size * 1024, nil
+	case "M", "MB", "m", "mb":
+		return size * 1024 * 1024, nil
+	case "G", "GB", "g", "gb":
+		return size * 1024 * 1024 * 1024, nil
+	case "T", "TB", "t", "tb":
+		return size * 1024 * 1024 * 1024 * 1024, nil
+	default:
+		return 0, fmt.Errorf("unknown size unit: %q", unit)
+	}
+}

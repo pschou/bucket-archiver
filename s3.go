@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -279,18 +278,12 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 		wg.Add(1)
 		go func(idx int, partNum int32, start, partLen int64) {
 			defer wg.Done()
-			partBuf := make([]byte, partLen)
-			_, err := file.ReadAt(partBuf, start)
-			if err != nil && err != io.EOF {
-				errCh <- fmt.Errorf("part %d: failed to read file: %w", partNum, err)
-				return
-			}
 			upResp, err := s3client.UploadPart(ctx, &s3.UploadPartInput{
 				Bucket:     aws.String(dstBucket),
 				Key:        aws.String(key),
 				PartNumber: aws.Int32(partNum),
 				UploadId:   aws.String(uploadID),
-				Body:       bytes.NewReader(partBuf),
+				Body:       io.NewSectionReader(file, start, partLen),
 			})
 			if err != nil {
 				errCh <- fmt.Errorf("part %d: failed to upload: %w", partNum, err)

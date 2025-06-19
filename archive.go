@@ -113,6 +113,9 @@ func OpenArchive() string {
 		// No sense proceeding if the archives cannot be created
 		log.Fatalf("failed to create tgz file: %v", err)
 	}
+	if debug {
+		log.Println("created archive", tgzFilePath)
+	}
 
 	// Create a gzip writer and tar writer
 	archiveGzip, err = gzip.NewWriterLevel(archiveFile, gzip.BestCompression)

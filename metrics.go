@@ -16,12 +16,15 @@ var (
 
 	DownloadedFiles int64
 	DownloadedBytes int64
-	metricsTicker   *time.Ticker
+
+	UploadedFiles int64
+	UploadedBytes int64
+	metricsTicker *time.Ticker
 )
 
 func StartMetrics(ctx context.Context) {
 	// Start metrics reporter goroutine
-	var lastBytes int64
+	var lastBytes, lastUpBytes int64
 	var lastTime = time.Now()
 
 	metricsTicker = time.NewTicker(250 * time.Millisecond)
@@ -35,12 +38,15 @@ func StartMetrics(ctx context.Context) {
 				return
 			case <-metricsTicker.C:
 				curBytes := atomic.LoadInt64(&DownloadedBytes)
+				curUpBytes := atomic.LoadInt64(&UploadedBytes)
 				now := time.Now()
 				elapsed := now.Sub(lastTime)
 
-				fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)", DownloadedFiles, TotalFiles,
-					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed))
+				fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)  Upload: %s %s (%s)", DownloadedFiles, TotalFiles,
+					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
+					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 				lastBytes = curBytes
+				lastUpBytes = curUpBytes
 				lastTime = now
 			}
 		}

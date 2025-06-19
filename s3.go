@@ -283,7 +283,7 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 				Key:        aws.String(key),
 				PartNumber: aws.Int32(partNum),
 				UploadId:   aws.String(uploadID),
-				Body:       io.NewSectionReader(file, start, partLen),
+				Body:       NewSectionReader(file, start, partLen),
 			})
 			if err != nil {
 				errCh <- fmt.Errorf("part %d: failed to upload: %w", partNum, err)

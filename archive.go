@@ -96,6 +96,7 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 					log.Println("Wrote", n, "bytes to tar")
 				}
 				fh.Close()
+				os.Remove(task.Filename)
 			}
 			if debug {
 				log.Println("Wrote", task.Filename, "to tar")

@@ -63,7 +63,7 @@ func main() {
 		toDownload      = make(chan DownloadTask, 1)
 		downloadedFiles = make(chan DownloadedFile, 1)
 		scannedFiles    = make(chan ScannedFile, 1)
-		ArchiveFiles    = make(chan ArchiveFile, 2)
+		ArchiveFiles    = make(chan ArchiveFile, 1)
 		Done            = make(chan struct{})
 	)
 

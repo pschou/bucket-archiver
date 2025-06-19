@@ -49,7 +49,7 @@ func (s *SectionReader) Read(p []byte) (n int, err error) {
 		p = p[0:max]
 	}
 	n, err = s.r.ReadAt(p, s.off)
-	s.off += int64(n)
 	atomic.AddInt64(&UploadedBytes, int64(n))
+	s.off += int64(n)
 	return
 }

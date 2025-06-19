@@ -44,8 +44,9 @@ func StartMetrics(ctx context.Context) {
 				now := time.Now()
 				elapsed := now.Sub(lastTime)
 
-				fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
+				fmt.Fprintf(os.Stderr, "\rDownload: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
+					ScannedFiles,
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 				lastBytes = curBytes
 				lastUpBytes = curUpBytes

@@ -113,7 +113,8 @@ func OpenArchive() string {
 	// Create a .tgz file on disk and prepare to write to it
 	archiveCount++
 	tgzFilePath := fmt.Sprintf("archive_%07d.tgz", archiveCount)
-	archiveFile, err := os.Create(tgzFilePath)
+	var err error
+	archiveFile, err = os.Create(tgzFilePath)
 	if err != nil {
 		// No sense proceeding if the archives cannot be created
 		log.Fatalf("failed to create tgz file: %v", err)

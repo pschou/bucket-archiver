@@ -106,7 +106,6 @@ func init() {
 }
 
 func downloadObjectInParts(ctx context.Context, srcBucket string, key string, size int64, partCount int) (string, error) {
-
 	s3Ready.Wait()
 
 	ext := filepath.Ext(key)
@@ -119,12 +118,17 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	if err := outFile.Truncate(size); err != nil {
+	tempName := outFile.Name()
+	defer func() {
 		outFile.Close()
-		os.Remove(outFile.Name())
+		if tempName != "" {
+			os.Remove(tempName)
+		}
+	}()
+
+	if err := outFile.Truncate(size); err != nil {
 		return "", fmt.Errorf("failed to pre-allocate file: %w", err)
 	}
-	defer outFile.Close()
 
 	var (
 		partSize = size / int64(partCount)
@@ -191,12 +195,11 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 	for e := range errCh {
 		if e != nil {
 			proceed = false
-			outFile.Close()
-			os.Remove(outFile.Name())
 			return "", e
 		}
 	}
 
+	tempName = "" // Prevent deletion
 	return outFile.Name(), nil
 }
 
@@ -232,6 +235,7 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, l
 
 func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, partCount int) error {
 	file, err := os.Open(filePath)
+	defer file.Close()
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}

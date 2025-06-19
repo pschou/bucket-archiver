@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"sync/atomic"
 )
 
@@ -27,6 +28,7 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 			if err := uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8); err != nil {
 				log.Fatal(err)
 			}
+			os.Remove(task.Filename)
 			atomic.AddInt64(&UploadedFiles, 1)
 		}
 	}

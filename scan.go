@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	clamav "github.com/hexahigh/go-clamav"
@@ -164,6 +165,8 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 		case <-ctx.Done():
 			break
 		case task, ok := <-tasksCh:
+			atomic.AddInt64(&ScannedFiles, 1)
+
 			if !ok {
 				log.Println("Closing scanner...")
 				return
@@ -174,6 +177,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 					Size:     task.Size,
 					Filename: task.Filename,
 				}
+
 				return // Skip empty files
 			}
 

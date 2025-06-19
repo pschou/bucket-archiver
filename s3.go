@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -14,8 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 )
 
 var (
@@ -245,70 +247,32 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 	}
 
 	s3Ready.Wait() // Wait for the S3 client to be ready
-	//func multipartUpload(client *s3.Client, body []byte, uploadPath string, contType string, fileSize int64, bucket string) error {
-	input := &s3.CreateMultipartUploadInput{
-		Bucket:      aws.String(dstBucket),
-		Key:         aws.String(filePath),
-		ContentType: aws.String("application/gzip"),
-	}
-	resp, err := s3client.CreateMultipartUpload(context.TODO(), input)
-	if err != nil {
-		return err
-	}
 
-	var curr, partLength int64
-	var remaining = size
-	var completedParts []types.CompletedPart
-	const maxPartSize int64 = int64(50 * 1024 * 1024)
-	partNumber := int32(1)
-	for curr = 0; remaining != 0; curr += partLength {
-		if remaining < maxPartSize {
-			partLength = remaining
+	var partMiBs int64 = 10
+	uploader := manager.NewUploader(s3client, func(u *manager.Uploader) {
+		u.PartSize = partMiBs * 1024 * 1024
+	})
+	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(dstBucket),
+		Key:    aws.String(key),
+		Body:   file,
+	})
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "EntityTooLarge" {
+			log.Printf("Error while uploading object to %s. The object is too large.\n"+
+				"The maximum size for a multipart upload is 5TB.", dstBucket)
 		} else {
-			partLength = maxPartSize
+			log.Printf("Couldn't upload large object to %v:%v. Here's why: %v\n",
+				dstBucket, key, err)
 		}
-
-		partInput := &s3.UploadPartInput{
-			Body:       NewSectionReader(file, curr, partLength),
-			Bucket:     resp.Bucket,
-			Key:        resp.Key,
-			PartNumber: aws.Int32(partNumber),
-			UploadId:   resp.UploadId,
-		}
-		uploadResult, err := s3client.UploadPart(context.TODO(), partInput)
+	} else {
+		err = s3.NewObjectExistsWaiter(s3client).Wait(
+			ctx, &s3.HeadObjectInput{Bucket: aws.String(dstBucket), Key: aws.String(key)}, time.Minute)
 		if err != nil {
-			aboInput := &s3.AbortMultipartUploadInput{
-				Bucket:   resp.Bucket,
-				Key:      resp.Key,
-				UploadId: resp.UploadId,
-			}
-			_, aboErr := s3client.AbortMultipartUpload(context.TODO(), aboInput)
-			if aboErr != nil {
-				return aboErr
-			}
-			return err
+			log.Printf("Failed attempt to wait for object %s to exist.\n", key)
 		}
-
-		completedParts = append(completedParts, types.CompletedPart{
-			ETag:       uploadResult.ETag,
-			PartNumber: aws.Int32(partNumber),
-		})
-		remaining -= partLength
-		partNumber++
 	}
 
-	compInput := &s3.CompleteMultipartUploadInput{
-		Bucket:   resp.Bucket,
-		Key:      resp.Key,
-		UploadId: resp.UploadId,
-		MultipartUpload: &types.CompletedMultipartUpload{
-			Parts: completedParts,
-		},
-	}
-	_, compErr := s3client.CompleteMultipartUpload(context.TODO(), compInput)
-	if err != nil {
-		return compErr
-	}
-
-	return nil
+	return err
 }

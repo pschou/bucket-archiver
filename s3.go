@@ -101,7 +101,7 @@ func init() {
 }
 
 func downloadObjectInParts(ctx context.Context, srcBucket string, key string, size int64, partCount int,
-	currentObj, remainObj int, remainBytes int64) (string, error) {
+	currentObj, totalObj int, remainBytes int64) (string, error) {
 
 	s3Ready.Wait()
 
@@ -140,9 +140,9 @@ func downloadObjectInParts(ctx context.Context, srcBucket string, key string, si
 			case <-ticker.C:
 				curBytes := atomic.LoadInt64(&downloadedBytes)
 				now := time.Now()
-				elapsed := now.Sub(lastTime).Seconds()
-				rate := float64(curBytes-lastBytes) / elapsed
-				fmt.Fprintf(os.Stderr, "Downloading %s: %d/%d bytes (%.2f KB/s)\n", key, curBytes, size, rate/1024)
+				elapsed := now.Sub(lastTime)
+				fmt.Fprintf(os.Stderr, "%d/%d %s: %s/%s bytes (%s)\n", currentObj, totalObj, key,
+					humanizeBytes(curBytes), humanizeBytes(size), humanizeRate(curBytes-lastBytes, elapsed))
 				lastBytes = curBytes
 				lastTime = now
 			}

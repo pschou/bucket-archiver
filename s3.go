@@ -24,35 +24,36 @@ var (
 
 	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
 	s3Ready   sync.WaitGroup          // channel to signal when the S3 client is ready
+	awscliLog = log.New(os.Stderr, "awscli: ", log.LstdFlags)
 )
 
 func init() {
-	log.Println("Initializing S3 client...")
+	awscliLog.Println("Initializing S3 client...")
 	s3Ready.Add(1) // Add to wait group to signal when the S3 client is ready
 	go func() {
 		defer s3Ready.Done() // Signal that the S3 client is ready
 
 		/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
-			log.Fatal("Could not load default config,", err)
+			awscliLog.Fatal("Could not load default config,", err)
 		}*/
 
 		imdsClient := imds.New(imds.Options{})
 		gro, err := imdsClient.GetRegion(context.TODO(), &imds.GetRegionInput{})
 		if err != nil {
-			log.Fatal("Could not get region property,", err)
+			awscliLog.Fatal("Could not get region property,", err)
 		}
 
 		iam, err := imdsClient.GetIAMInfo(context.TODO(), &imds.GetIAMInfoInput{})
 		if err != nil {
-			log.Fatal("Could not get IAM property,", err)
+			awscliLog.Fatal("Could not get IAM property,", err)
 		}
 
 		region = gro.Region
-		log.Println("EC2 Environment:")
-		log.Println("  AWS_REGION:", gro.Region)
-		log.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
-		log.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
+		awscliLog.Println("EC2 Environment:")
+		awscliLog.Println("  AWS_REGION:", gro.Region)
+		awscliLog.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
+		awscliLog.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
 
 		getConfig := func() error {
 			// Get a credential provider from the configured role attached to the currently running EC2 instance
@@ -72,7 +73,7 @@ func init() {
 
 		fmt.Println("Testing call to AWS...")
 		if err := getConfig(); err != nil {
-			log.Fatal("Error getting config:", err)
+			awscliLog.Fatal("Error getting config:", err)
 		}
 		refreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
 
@@ -81,11 +82,11 @@ func init() {
 			// and recovery should the server not have a policy assigned to it yet.
 			for {
 				time.Sleep(refreshTime)
-				log.Printf("Pulling new creds for s3Client %#v\n", s3client)
+				awscliLog.Printf("Pulling new creds for s3Client %#v\n", s3client)
 				getConfig()
 			}
 		}()
-		log.Println("S3 client initialized successfully")
+		awscliLog.Println("S3 client initialized successfully")
 	}()
 }
 
@@ -150,9 +151,9 @@ func processUpload(ctx context.Context, dstBucket string, filePath string) {
 	go func(fileToUpload string) {
 		defer uploadSWD.Done()
 		if err := uploadFileToBucket(ctx, dstBucket, filePath, filePath); err != nil {
-			log.Printf("Failed to upload %s: %v", filePath, err)
+			awscliLog.Printf("Failed to upload %s: %v", filePath, err)
 		} else {
-			log.Printf("Uploaded %s to bucket %s", filePath, dstBucket)
+			awscliLog.Printf("Uploaded %s to bucket %s", filePath, dstBucket)
 		}
 		os.Remove(fileToUpload) // Clean up the temporary file after upload
 	}(filePath)

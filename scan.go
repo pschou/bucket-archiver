@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -14,6 +15,8 @@ var (
 	clamavInstance *clamav.Clamav           // ClamAV instance for scanning files
 	virusScanMap   = map[string]string{}    // Metadata map for virus scan
 	scanReady      sync.WaitGroup           // channel to signal scan readiness
+
+	clamLog = log.New(os.Stderr, "clamav: ", log.LstdFlags)
 )
 
 func init() {

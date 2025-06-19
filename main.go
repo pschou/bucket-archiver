@@ -12,7 +12,7 @@ import (
 var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
-	memoryOnlyScan   = make([]byte, 1*1024*1024)     // Placeholder for memory-only scan logic
+	debug            = os.Getenv("DEBUG") != ""
 )
 
 func main() {
@@ -64,6 +64,7 @@ func main() {
 		downloadedFiles = make(chan DownloadedFile, 10)
 		scannedFiles    = make(chan ScannedFile, 10)
 		ArchiveFiles    = make(chan ArchiveFile, 2)
+		Done            = make(chan struct{})
 	)
 
 	// Read the metadata and send it to the toDownload pipline
@@ -80,8 +81,9 @@ func main() {
 	// Consume the scanned files pipeline and put in archive
 	go Archiver(ctx, scannedFiles, ArchiveFiles)
 
+	go Uploader(ctx, ArchiveFiles, Done)
 	StopMetrics()
 
-	uploadSWD.Wait() // Wait for all uploads to finish
+	<-Done // Wait for all uploads to finish
 	log.Println("All uploads completed successfully.")
 }

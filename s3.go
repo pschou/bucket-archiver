@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 var (
@@ -227,40 +229,105 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, l
 	return total, nil
 }
 
-/*
-func processUpload(ctx context.Context, dstBucket string, filePath string) {
+func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, partCount int) error {
 	s3Ready.Wait() // Wait for the S3 client to be ready
-	uploadSWD.Add()
-	go func(fileToUpload string) {
-		defer uploadSWD.Done()
-		if err := uploadFileToBucket(ctx, dstBucket, filePath, filePath); err != nil {
-			awscliLog.Printf("Failed to upload %s: %v", filePath, err)
-		} else {
-			awscliLog.Printf("Uploaded %s to bucket %s", filePath, dstBucket)
-		}
-		os.Remove(fileToUpload) // Clean up the temporary file after upload
-	}(filePath)
-}
 
-func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {
-	s3Ready.Wait() // Wait for the S3 client to be ready
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
-	_, err = s3client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(dstBucket),
-		Key:         aws.String(key),
-		Body:        file,
-		ContentType: aws.String("application/octet-stream"), // Set appropriate content type
-		Metadata:    virusScanMap,
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file %s: %w", filePath, err)
+	}
+	size := info.Size()
+	if partCount <= 0 || size == 0 {
+		return fmt.Errorf("invalid partCount or file size")
+	}
+
+	partSize := size / int64(partCount)
+	if size%int64(partCount) != 0 {
+		partSize++
+	}
+
+	createResp, err := s3client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(dstBucket),
+		Key:    aws.String(key),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to upload file to bucket %s with key %s: %w", dstBucket, key, err)
+		return fmt.Errorf("failed to initiate multipart upload: %w", err)
+	}
+
+	var (
+		wg       sync.WaitGroup
+		errCh    = make(chan error, partCount)
+		etags    = make([]s3types.CompletedPart, partCount)
+		uploadID = *createResp.UploadId
+	)
+
+	for i := 0; i < partCount; i++ {
+		start := int64(i) * partSize
+		end := start + partSize
+		if end > size {
+			end = size
+		}
+		partNum := int32(i + 1)
+		partLen := end - start
+
+		wg.Add(1)
+		go func(idx int, partNum int32, start, partLen int64) {
+			defer wg.Done()
+			partBuf := make([]byte, partLen)
+			_, err := file.ReadAt(partBuf, start)
+			if err != nil && err != io.EOF {
+				errCh <- fmt.Errorf("part %d: failed to read file: %w", partNum, err)
+				return
+			}
+			upResp, err := s3client.UploadPart(ctx, &s3.UploadPartInput{
+				Bucket:     aws.String(dstBucket),
+				Key:        aws.String(key),
+				PartNumber: aws.Int32(partNum),
+				UploadId:   aws.String(uploadID),
+				Body:       bytes.NewReader(partBuf),
+			})
+			if err != nil {
+				errCh <- fmt.Errorf("part %d: failed to upload: %w", partNum, err)
+				return
+			}
+			etags[idx] = s3types.CompletedPart{
+				ETag:       upResp.ETag,
+				PartNumber: aws.Int32(partNum),
+			}
+		}(i, partNum, start, partLen)
+	}
+
+	wg.Wait()
+	close(errCh)
+	for e := range errCh {
+		if e != nil {
+			// Abort the multipart upload on error
+			s3client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+				Bucket:   aws.String(dstBucket),
+				Key:      aws.String(key),
+				UploadId: aws.String(uploadID),
+			})
+			return e
+		}
+	}
+
+	_, err = s3client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(dstBucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &s3types.CompletedMultipartUpload{
+			Parts: etags,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to complete multipart upload: %w", err)
 	}
 
 	return nil
 }
-*/

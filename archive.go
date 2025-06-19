@@ -9,8 +9,6 @@ import (
 	"io"
 	"log"
 	"os"
-
-	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
@@ -21,7 +19,6 @@ var (
 	archiveBytesWritten int64
 
 	doneArchiving = make(chan struct{})
-	uploadSWD     = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
 )
 
 // DownloadTask represents a file to download.
@@ -32,13 +29,7 @@ type ArchiveFile struct {
 // Archiver listens for ScannedFile on tasksCh, archives them, and sends to a bucket.
 func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- ArchiveFile) {
 	log.Println("Starting archiver...")
-
-	defer func() {
-		if archiveFile != nil {
-			CloseArchive()
-		}
-		close(doneCh)
-	}()
+	defer close(doneCh)
 
 	var tgzFile string
 	for {
@@ -47,7 +38,9 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			return
 		case task, ok := <-tasksCh:
 			if !ok {
-				break
+				CloseArchive()
+				doneCh <- ArchiveFile{Filename: tgzFile}
+				return
 			}
 
 			if archiveFile == nil {
@@ -93,9 +86,6 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				}
 			}
 		}
-	}
-	if tgzFile != "" {
-		doneCh <- ArchiveFile{Filename: tgzFile}
 	}
 }
 

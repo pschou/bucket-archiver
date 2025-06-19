@@ -71,7 +71,7 @@ func init() {
 			return nil
 		}
 
-		fmt.Println("Testing call to AWS...")
+		awscliLog.Println("Testing call to AWS...")
 		if err := getConfig(); err != nil {
 			awscliLog.Fatal("Error getting config:", err)
 		}

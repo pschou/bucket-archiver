@@ -24,7 +24,17 @@ github.com/aws/aws-sdk-go-v2/service/s3 v1.80.2 h1:T6Wu+8E2LeTUqzqQ/Bh1EoFNj1u4j
 github.com/aws/aws-sdk-go-v2/service/s3 v1.80.2/go.mod h1:chSY8zfqmS0OnhZoO/hpPx/BHfAIL80m77HwhRLYScY=
 github.com/aws/smithy-go v1.22.2 h1:6D9hW43xKFrRx/tXXfAlIZc4JI+yQe6snnWcQyxSyLQ=
 github.com/aws/smithy-go v1.22.2/go.mod h1:irrKGvNn1InZwb2d7fkIRNucdfwR8R+Ts3wxYa/cJHg=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/elulcao/progress-bar v0.1.3 h1:LhuZMOPkLhXzMOW8ecP2LEpP3PPB4STxJgQLbzols80=
+github.com/elulcao/progress-bar v0.1.3/go.mod h1:tQfIBTwLqm3IJoOfRhDjCb568b342K9b8kEqkjp9kdo=
 github.com/hexahigh/go-clamav v0.7.1 h1:blknoCm2D9DWwWJcZb+Gn4wiRJ1Yj68lavo/xE8o5qk=
 github.com/hexahigh/go-clamav v0.7.1/go.mod h1:7Yh4SXzGWqx83yjM9sXmQ70ucip+QR//PC0QbNjXvlA=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
 github.com/remeh/sizedwaitgroup v1.0.0/go.mod h1:3j2R4OIe/SeS6YDhICBy22RWjJC5eNCJ1V+9+NVNYlo=
+github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

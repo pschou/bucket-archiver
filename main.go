@@ -22,11 +22,9 @@ var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
 	memoryOnlyScan   = make([]byte, 1*1024*1024)     // Placeholder for memory-only scan logic
-
 )
 
 func main() {
-
 	// Parse SIZECAP environment variable if set, otherwise use default
 	if sizeCapStr := os.Getenv("SIZECAP"); sizeCapStr != "" {
 		parsed, err := parseByteSize(sizeCapStr)
@@ -106,6 +104,8 @@ func main() {
 	scanReady.Wait() // Wait for the ClamAV instance to be ready
 	log.Println("Starting to process metadata file:", metadataFileName)
 	lineNumber := 0
+
+	progress.Total = objectCount
 	for scanner.Scan() {
 		if tempFilePath != "" {
 			// Clean up temporary file if it was created
@@ -114,6 +114,8 @@ func main() {
 		tempFilePath = "" // Reset temp file path for each new line
 
 		lineNumber++
+		progress.RenderPBar(lineNumber)
+
 		if tgzFile == nil || uncompressedSize > sizeCapLimit {
 			if tgzFile != nil {
 				// If we have an existing tarball, close it before starting a new one

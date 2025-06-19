@@ -2,6 +2,7 @@ package main
 
 // Progress bar initialization
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"sync"
@@ -17,8 +18,10 @@ var (
 	}
 )
 
-func progressCp(dst io.Writer, src io.Reader, size int64, file string, remainObj int, remainBytes int64) (int64, error) {
+func progressCp(rawdst io.Writer, src io.Reader, size int64, file string, remainObj int, remainBytes int64) (int64, error) {
 	// Progress copy function that reads from src and writes to dst while displaying progress
+	dst := bufio.NewWriter(rawdst)
+	defer dst.Flush() // Ensure all data is flushed to the writer
 
 	// Truncate file name if it exceeds 60 characters
 	file = truncateFileName(file, 60)
@@ -61,7 +64,7 @@ func progressCp(dst io.Writer, src io.Reader, size int64, file string, remainObj
 	}
 	elapsed := time.Since(startTime)
 	rate := humanizeRate(written, elapsed)
-	fmt.Printf("\r%s: %d/%d (%s) with %d (%s) remaining\n", file,
+	fmt.Printf("\r%s: %s/%s (%s) with %d (%s) remaining\n", file,
 		humanizeBytes(written), humanizeBytes(size), rate, remainObj, humanizeBytes(remainBytes))
 	return written, nil
 }

@@ -193,6 +193,7 @@ func main() {
 			}
 			tempFileMem = memoryOnlyScan[:n] // Use the downloaded bytes
 
+			<-scanReady
 			fmem := clamav.OpenMemory(tempFileMem)
 			if fmem == nil {
 				log.Printf("Failed to open memory for scanning %s", entry.Key)
@@ -222,6 +223,7 @@ func main() {
 
 			// Scan the file
 			//fmt.Printf("Scanning file: %s\n", tempFilePath)
+			<-scanReady
 			_, virusName, err := clamavInstance.ScanFile(tempFilePath)
 			if virusName != "" {
 				//log.Printf("Virus found in %q: %s\n", filePath, virusName)

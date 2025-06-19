@@ -21,8 +21,8 @@ var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
-	s3Ready   = make(chan struct{})   // Channel to signal S3 client readiness
+	uploadSWD = sizedwaitgroup.New(2)  // Limit concurrent uploads to 2
+	s3Ready   = make(chan struct{}, 1) // Channel to signal S3 client readiness
 )
 
 func init() {

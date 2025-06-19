@@ -12,7 +12,7 @@ var (
 	scanMutex      = make(chan struct{}, 1) // semaphore to limit concurrent scans
 	clamavInstance *clamav.Clamav           // ClamAV instance for scanning files
 	virusScanMap   = map[string]string{}    // Metadata map for virus scan
-	scanReady      = make(chan struct{})    // channel to signal scan readiness
+	scanReady      = make(chan struct{}, 1) // channel to signal scan readiness
 )
 
 func init() {

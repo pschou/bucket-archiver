@@ -22,9 +22,10 @@ var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
-	s3Ready   sync.WaitGroup          // channel to signal when the S3 client is ready
-	awscliLog = log.New(os.Stderr, "awscli: ", log.LstdFlags)
+	uploadSWD            = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
+	s3Ready              sync.WaitGroup          // channel to signal when the S3 client is ready
+	awscliLog            = log.New(os.Stderr, "awscli: ", log.LstdFlags)
+	srcBucket, dstBucket string // Source and destination buckets
 )
 
 func init() {
@@ -33,6 +34,10 @@ func init() {
 	if err != nil {
 		awscliLog.Fatal("Invalid REFRESH duration:", err)
 	}
+
+	// Load environment variables for source and destination buckets and tarball key
+	srcBucket = Env("SRC_BUCKET", "mySourceBucket", "The source S3 bucket name")
+	dstBucket = Env("DST_BUCKET", "myDestinationBucket", "The destination S3 bucket name")
 
 	s3Ready.Add(1) // Add to wait group to signal when the S3 client is ready
 	go func() {

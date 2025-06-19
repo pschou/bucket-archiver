@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	clamav "github.com/hexahigh/go-clamav"
@@ -12,13 +13,14 @@ var (
 	scanMutex      = make(chan struct{}, 1) // semaphore to limit concurrent scans
 	clamavInstance *clamav.Clamav           // ClamAV instance for scanning files
 	virusScanMap   = map[string]string{}    // Metadata map for virus scan
-	scanReady      = make(chan struct{}, 1) // channel to signal scan readiness
+	scanReady      sync.WaitGroup           // channel to signal scan readiness
 )
 
 func init() {
 	log.Println("Initializing ClamAV...")
+	scanReady.Add(1) // Add to wait group to signal when ClamAV is ready
 	go func() {
-		defer close(scanReady) // Signal that the ClamAV instance is ready
+		defer scanReady.Done() // Signal that the ClamAV instance is ready
 
 		// new clamav instance
 		clamavInstance = new(clamav.Clamav)

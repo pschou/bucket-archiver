@@ -107,6 +107,7 @@ func main() {
 		}
 	}()
 
+	scanReady.Wait() // Wait for the ClamAV instance to be ready
 	log.Println("Starting to process metadata file:", metadataFileName)
 	lineNumber := 0
 	for scanner.Scan() {
@@ -193,7 +194,6 @@ func main() {
 			}
 			tempFileMem = memoryOnlyScan[:n] // Use the downloaded bytes
 
-			<-scanReady
 			fmem := clamav.OpenMemory(tempFileMem)
 			if fmem == nil {
 				log.Printf("Failed to open memory for scanning %s", entry.Key)
@@ -223,7 +223,6 @@ func main() {
 
 			// Scan the file
 			//fmt.Printf("Scanning file: %s\n", tempFilePath)
-			<-scanReady
 			_, virusName, err := clamavInstance.ScanFile(tempFilePath)
 			if virusName != "" {
 				//log.Printf("Virus found in %q: %s\n", filePath, virusName)
@@ -317,7 +316,6 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		log.Fatalf("error reading metadata file: %v", err)
 	}
-
 }
 
 func Env(env, def, usage string) string {

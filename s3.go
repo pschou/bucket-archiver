@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,14 +22,15 @@ var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD = sizedwaitgroup.New(2)  // Limit concurrent uploads to 2
-	s3Ready   = make(chan struct{}, 1) // Channel to signal S3 client readiness
+	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
+	s3Ready   sync.WaitGroup          // channel to signal when the S3 client is ready
 )
 
 func init() {
 	log.Println("Initializing S3 client...")
+	s3Ready.Add(1) // Add to wait group to signal when the S3 client is ready
 	go func() {
-		defer close(s3Ready) // Signal that the S3 client is ready
+		defer s3Ready.Done() // Signal that the S3 client is ready
 
 		/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
@@ -88,7 +90,7 @@ func init() {
 }
 
 func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string) (string, error) {
-	<-s3Ready // Wait for the S3 client to be ready
+	s3Ready.Wait() // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
 		Key:    &key,
@@ -125,7 +127,7 @@ func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string)
 }
 
 func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, buf []byte) (int, error) {
-	<-s3Ready // Wait for the S3 client to be ready
+	s3Ready.Wait() // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
 		Key:    &key,
@@ -143,7 +145,7 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, b
 }
 
 func processUpload(ctx context.Context, dstBucket string, filePath string) {
-	<-s3Ready // Wait for the S3 client to be ready
+	s3Ready.Wait() // Wait for the S3 client to be ready
 	uploadSWD.Add()
 	go func(fileToUpload string) {
 		defer uploadSWD.Done()
@@ -157,7 +159,7 @@ func processUpload(ctx context.Context, dstBucket string, filePath string) {
 }
 
 func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {
-	<-s3Ready // Wait for the S3 client to be ready
+	s3Ready.Wait() // Wait for the S3 client to be ready
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)

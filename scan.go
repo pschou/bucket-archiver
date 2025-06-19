@@ -21,6 +21,21 @@ var (
 
 func init() {
 	clamLog.Println("Initializing ClamAV...")
+	definitionsPath := Env("DEFINITIONS", "./db", "The path with the ClamAV definitions")
+	// Test if path exists and can be read or fail
+	info, err := os.Stat(definitionsPath)
+	if err != nil {
+		clamLog.Fatalf("Definitions path error: %v", err)
+	}
+	if !info.IsDir() {
+		clamLog.Fatalf("Definitions path is not a directory: %s", definitionsPath)
+	}
+	file, err := os.Open(definitionsPath)
+	if err != nil {
+		clamLog.Fatalf("Cannot read definitions path: %v", err)
+	}
+	file.Close()
+
 	scanReady.Add(1) // Add to wait group to signal when ClamAV is ready
 	go func() {
 		defer scanReady.Done() // Signal that the ClamAV instance is ready
@@ -42,7 +57,7 @@ func init() {
 		//defer clamavInstance.Free()
 
 		// load db (/var/lib/clamav/)
-		signo, err := clamavInstance.LoadDB("./db", uint(clamav.CL_DB_DIRECTORY))
+		signo, err := clamavInstance.LoadDB(definitionsPath, uint(clamav.CL_DB_DIRECTORY))
 		if err != nil {
 			panic(err)
 		}

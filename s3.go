@@ -29,6 +29,11 @@ var (
 
 func init() {
 	awscliLog.Println("Initializing S3 client...")
+	s3RefreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
+	if err != nil {
+		awscliLog.Fatal("Invalid REFRESH duration:", err)
+	}
+
 	s3Ready.Add(1) // Add to wait group to signal when the S3 client is ready
 	go func() {
 		defer s3Ready.Done() // Signal that the S3 client is ready
@@ -75,13 +80,12 @@ func init() {
 		if err := getConfig(); err != nil {
 			awscliLog.Fatal("Error getting config:", err)
 		}
-		refreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
 
 		go func() {
 			// Refresh credentials every 20 minutes to ensure low latency on requests
 			// and recovery should the server not have a policy assigned to it yet.
 			for {
-				time.Sleep(refreshTime)
+				time.Sleep(s3RefreshTime)
 				awscliLog.Printf("Pulling new creds for s3Client %#v\n", s3client)
 				getConfig()
 			}

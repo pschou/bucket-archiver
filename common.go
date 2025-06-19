@@ -22,10 +22,10 @@ var (
 
 func Env(env, def, usage string) string {
 	if e := os.Getenv(env); len(e) > 0 {
-		fmt.Printf("  %20s # %s\n", fmt.Sprintf("%s=%q", env, e), usage)
+		fmt.Printf("  %-30s # %s\n", fmt.Sprintf("%s=%q", env, e), usage)
 		return e
 	}
-	fmt.Printf("  %20s # %s\n", fmt.Sprintf("%s=%q (default)", env, def), usage)
+	fmt.Printf("  %-30s # %s\n", fmt.Sprintf("%s=%q (default)", env, def), usage)
 	return def
 }
 

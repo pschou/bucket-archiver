@@ -71,7 +71,8 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				log.Fatalf("failed to write tar header for %s: %v", task.Filename, err)
 			}
 
-			if len(task.Bytes) == 0 {
+			if task.Size == 0 {
+				// Empty files don't need anything written, just the header
 				continue
 			}
 

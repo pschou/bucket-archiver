@@ -18,6 +18,7 @@ type MetaEntry struct {
 }
 
 func loadMetadata(ctx context.Context, srcBucket string) (totalSize int64, objectCount int, err error) {
+	<-s3Ready // Wait for the S3 client to be ready
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
 	// List objects in source bucket
 	paginator := s3.NewListObjectsV2Paginator(s3client, &s3.ListObjectsV2Input{

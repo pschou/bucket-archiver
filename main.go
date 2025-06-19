@@ -105,16 +105,13 @@ func main() {
 	log.Println("Starting to process metadata file:", metadataFileName)
 	lineNumber := 0
 
-	progress.Total = objectCount
 	for scanner.Scan() {
 		if tempFilePath != "" {
 			// Clean up temporary file if it was created
 			os.Remove(tempFilePath)
 		}
 		tempFilePath = "" // Reset temp file path for each new line
-
 		lineNumber++
-		progress.RenderPBar(lineNumber)
 
 		if tgzFile == nil || uncompressedSize > sizeCapLimit {
 			if tgzFile != nil {
@@ -214,7 +211,7 @@ func main() {
 				continue
 			}
 		} else {
-			tempFilePath, err = downloadObjectToTempFile(ctx, srcBucket, entry.Key)
+			tempFilePath, err = downloadObjectToTempFile(ctx, srcBucket, entry.Key, objectCount-lineNumber, totalSize-readSize)
 			if err != nil {
 				log.Fatalf("failed to download object %s: %v", entry.Key, err)
 			}

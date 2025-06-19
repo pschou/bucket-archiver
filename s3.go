@@ -99,7 +99,7 @@ func init() {
 	}()
 }
 
-func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string) (string, error) {
+func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string, remainObj int, remainBytes int64) (string, error) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
@@ -127,8 +127,8 @@ func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string)
 	// Ensure the temporary file is closed after use
 	defer tmpFile.Close()
 
-	// Write the content of the S3 object to the temporary file
-	if _, err := io.Copy(tmpFile, getObj.Body); err != nil {
+	// Write the content of the S3 object to the temporary file using progressCp
+	if _, err := progressCp(tmpFile, getObj.Body, *getObj.ContentLength, key, remainObj, remainBytes); err != nil {
 		return "", fmt.Errorf("failed to write to temp file: %w", err)
 	}
 

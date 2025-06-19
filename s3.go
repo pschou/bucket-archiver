@@ -15,16 +15,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-
-	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD            = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
-	s3Ready              sync.WaitGroup          // channel to signal when the S3 client is ready
+	s3Ready              sync.WaitGroup // channel to signal when the S3 client is ready
 	awscliLog            = log.New(os.Stderr, "awscli: ", log.LstdFlags)
 	srcBucket, dstBucket string // Source and destination buckets
 )

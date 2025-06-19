@@ -63,19 +63,24 @@ func main() {
 		toDownload      = make(chan DownloadTask, 10)
 		downloadedFiles = make(chan DownloadedFile, 10)
 		scannedFiles    = make(chan ScannedFile, 10)
+		ArchiveFiles    = make(chan ArchiveFile, 2)
 	)
 
 	// Read the metadata and send it to the toDownload pipline
 	ReadMetadata(ctx, toDownload)
 
+	StartMetrics(ctx)
+
 	// Consume the toDownload, download the file, and send to the downloaded pipeline
-	Downloader(ctx, toDownload, downloadedFiles)
+	go Downloader(ctx, toDownload, downloadedFiles)
 
 	// Consume the downloaded, scan, and then send to the scannedFiles pipeline
-	Scanner(ctx, downloadedFiles, scannedFiles)
+	go Scanner(ctx, downloadedFiles, scannedFiles)
 
 	// Consume the scanned files pipeline and put in archive
-	go Archiver(ctx, scannedFiles)
+	go Archiver(ctx, scannedFiles, ArchiveFiles)
+
+	StopMetrics()
 
 	uploadSWD.Wait() // Wait for all uploads to finish
 	log.Println("All uploads completed successfully.")

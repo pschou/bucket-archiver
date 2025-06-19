@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync/atomic"
 
 	"github.com/remeh/sizedwaitgroup"
@@ -35,6 +36,7 @@ func putMemory(mem []byte) {
 
 // Downloader listens for DownloadTask on tasksCh, downloads them, and sends DownloadedFile to doneCh.
 func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- DownloadedFile) {
+	log.Println("Starting downloader...")
 	swg := sizedwaitgroup.New(16) // Limit to 16 concurrent downloads
 	defer close(doneCh)           // Ensure doneCh is closed when the function exits
 
@@ -46,6 +48,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 			if !ok {
 				return
 			}
+
 			parts := 1
 			if task.Size > 8*1024*1024 {
 				// If file is larger than 8MB, download in parts

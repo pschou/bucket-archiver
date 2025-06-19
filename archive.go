@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
@@ -19,29 +21,45 @@ var (
 	archiveBytesWritten int64
 
 	doneArchiving = make(chan struct{})
+	uploadSWD     = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
 )
 
-// Archiver listens for ScannedFile on tasksCh, archives them, and sends to a bucket.
-func Archiver(ctx context.Context, tasksCh <-chan ScannedFile) {
+// DownloadTask represents a file to download.
+type ArchiveFile struct {
+	Filename string
+}
 
+// Archiver listens for ScannedFile on tasksCh, archives them, and sends to a bucket.
+func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- ArchiveFile) {
+	log.Println("Starting archiver...")
+
+	defer func() {
+		if archiveFile != nil {
+			CloseArchive()
+		}
+		close(doneCh)
+	}()
+
+	var tgzFile string
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case task, ok := <-tasksCh:
 			if !ok {
-				return
+				break
 			}
 
 			if archiveFile == nil {
 				// Open the initial file
-				OpenArchive()
+				tgzFile = OpenArchive()
 			}
 
 			if archiveBytesWritten > sizeCapLimit {
 				// If the internal size is above the capacity limit, roll files
 				CloseArchive()
-				OpenArchive()
+				doneCh <- ArchiveFile{Filename: tgzFile}
+				tgzFile = OpenArchive()
 			}
 
 			// Create a tar header for the file
@@ -76,14 +94,12 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile) {
 			}
 		}
 	}
-	if archiveFile != nil {
-		CloseArchive()
+	if tgzFile != "" {
+		doneCh <- ArchiveFile{Filename: tgzFile}
 	}
-
-	close(doneArchiving)
 }
 
-func OpenArchive() {
+func OpenArchive() string {
 	// Create a .tgz file on disk and prepare to write to it
 	archiveCount++
 	tgzFilePath := fmt.Sprintf("archive_%07d.tgz", archiveCount)
@@ -99,6 +115,7 @@ func OpenArchive() {
 		log.Fatalf("failed to create compressor for tgz file: %v", err)
 	}
 	archiveTar = tar.NewWriter(archiveGzip)
+	return tgzFilePath
 }
 
 func CloseArchive() {

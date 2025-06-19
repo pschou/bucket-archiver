@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 var (
@@ -229,103 +229,85 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, l
 }
 
 func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, partCount int) error {
-	s3Ready.Wait() // Wait for the S3 client to be ready
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
-	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to stat file %s: %w", filePath, err)
 	}
+
 	size := info.Size()
 	if partCount <= 0 || size == 0 {
 		return fmt.Errorf("invalid partCount or file size")
 	}
 
-	partSize := size / int64(partCount)
-	if size%int64(partCount) != 0 {
-		partSize++
+	s3Ready.Wait() // Wait for the S3 client to be ready
+	//func multipartUpload(client *s3.Client, body []byte, uploadPath string, contType string, fileSize int64, bucket string) error {
+	input := &s3.CreateMultipartUploadInput{
+		Bucket:      aws.String(dstBucket),
+		Key:         aws.String(filePath),
+		ContentType: aws.String("application/gzip"),
 	}
-
-	if debug {
-		log.Println("Creating multipart upload for", filePath)
-	}
-	createResp, err := s3client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
-		Bucket: aws.String(dstBucket),
-		Key:    aws.String(key),
-	})
+	resp, err := s3client.CreateMultipartUpload(context.TODO(), input)
 	if err != nil {
-		return fmt.Errorf("failed to initiate multipart upload: %w", err)
+		return err
 	}
 
-	var (
-		wg       sync.WaitGroup
-		errCh    = make(chan error, partCount)
-		etags    = make([]s3types.CompletedPart, partCount)
-		uploadID = *createResp.UploadId
-	)
-
-	for i := 0; i < partCount; i++ {
-		start := int64(i) * partSize
-		end := start + partSize
-		if end > size {
-			end = size
+	var curr, partLength int64
+	var remaining = size
+	var completedParts []types.CompletedPart
+	const maxPartSize int64 = int64(50 * 1024 * 1024)
+	partNumber := int32(1)
+	for curr = 0; remaining != 0; curr += partLength {
+		if remaining < maxPartSize {
+			partLength = remaining
+		} else {
+			partLength = maxPartSize
 		}
-		partNum := int32(i + 1)
-		partLen := end - start
 
-		wg.Add(1)
-		if debug {
-			log.Println("Fragment", i, "of", filePath, "is", start, end)
+		partInput := &s3.UploadPartInput{
+			Body:       NewSectionReader(file, curr, partLength),
+			Bucket:     resp.Bucket,
+			Key:        resp.Key,
+			PartNumber: aws.Int32(partNumber),
+			UploadId:   resp.UploadId,
 		}
-		go func(idx int, partNum int32, start, partLen int64) {
-			defer wg.Done()
-			upResp, err := s3client.UploadPart(ctx, &s3.UploadPartInput{
-				Bucket:     aws.String(dstBucket),
-				Key:        aws.String(key),
-				PartNumber: aws.Int32(partNum),
-				UploadId:   aws.String(uploadID),
-				Body:       NewSectionReader(file, start, partLen),
-			})
-			if err != nil {
-				errCh <- fmt.Errorf("part %d: failed to upload: %w", partNum, err)
-				return
+		uploadResult, err := s3client.UploadPart(context.TODO(), partInput)
+		if err != nil {
+			aboInput := &s3.AbortMultipartUploadInput{
+				Bucket:   resp.Bucket,
+				Key:      resp.Key,
+				UploadId: resp.UploadId,
 			}
-			etags[idx] = s3types.CompletedPart{
-				ETag:       upResp.ETag,
-				PartNumber: aws.Int32(partNum),
+			_, aboErr := s3client.AbortMultipartUpload(context.TODO(), aboInput)
+			if aboErr != nil {
+				return aboErr
 			}
-		}(i, partNum, start, partLen)
-	}
-
-	wg.Wait()
-	close(errCh)
-	for e := range errCh {
-		if e != nil {
-			// Abort the multipart upload on error
-			s3client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
-				Bucket:   aws.String(dstBucket),
-				Key:      aws.String(key),
-				UploadId: aws.String(uploadID),
-			})
-			return e
+			return err
 		}
+
+		completedParts = append(completedParts, types.CompletedPart{
+			ETag:       uploadResult.ETag,
+			PartNumber: aws.Int32(partNumber),
+		})
+		remaining -= partLength
+		partNumber++
 	}
 
-	_, err = s3client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
-		Bucket:   aws.String(dstBucket),
-		Key:      aws.String(key),
-		UploadId: aws.String(uploadID),
-		MultipartUpload: &s3types.CompletedMultipartUpload{
-			Parts: etags,
+	compInput := &s3.CompleteMultipartUploadInput{
+		Bucket:   resp.Bucket,
+		Key:      resp.Key,
+		UploadId: resp.UploadId,
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completedParts,
 		},
-	})
+	}
+	_, compErr := s3client.CompleteMultipartUpload(context.TODO(), compInput)
 	if err != nil {
-		return fmt.Errorf("failed to complete multipart upload: %w", err)
+		return compErr
 	}
 
 	return nil

@@ -75,6 +75,7 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				// Empty files don't need anything written, just the header
 				continue
 			}
+			archiveBytesWritten += task.Size
 
 			log.Println("tempfile = ", task.TempFile)
 			if task.TempFile == "" {
@@ -123,6 +124,9 @@ func OpenArchive() string {
 }
 
 func CloseArchive() {
+	if archiveFile == nil {
+		return
+	}
 	if err := archiveTar.Close(); err != nil {
 		log.Printf("failed to close tar writer: %v", err)
 	}
@@ -132,4 +136,5 @@ func CloseArchive() {
 	if err := archiveFile.Close(); err != nil {
 		log.Printf("failed to close tgz file: %v", err)
 	}
+	archiveFile = nil
 }

@@ -165,7 +165,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 			break
 		case task, ok := <-tasksCh:
 			if !ok {
-
+				log.Println("Closing scanner...")
 				return
 			}
 

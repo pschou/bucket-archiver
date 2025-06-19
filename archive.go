@@ -40,6 +40,7 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			if !ok {
 				CloseArchive()
 				doneCh <- ArchiveFile{Filename: tgzFile}
+				log.Println("Closing archiver...")
 				return
 			}
 
@@ -53,6 +54,10 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				CloseArchive()
 				doneCh <- ArchiveFile{Filename: tgzFile}
 				tgzFile = OpenArchive()
+			}
+
+			if debug {
+				log.Println("Writing", task.Filename, "to tar")
 			}
 
 			// Create a tar header for the file
@@ -79,11 +84,14 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 				if err != nil {
 					log.Fatalf("failed to open temp file %s: %v", task.TempFile, err)
 				}
-				defer fh.Close()
 
 				if _, err := io.Copy(archiveTar, fh); err != nil {
 					log.Fatalf("failed to write file %s to tar: %v", task.Filename, err)
 				}
+				fh.Close()
+			}
+			if debug {
+				log.Println("Wrote", task.Filename, "to tar")
 			}
 		}
 	}

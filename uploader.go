@@ -19,6 +19,7 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 		case task, ok := <-tasksCh:
 			if !ok {
 				wg.Wait()
+				log.Println("Closing uploader...")
 				return
 			}
 			wg.Add(1)

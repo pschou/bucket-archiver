@@ -37,7 +37,7 @@ func putMemory(mem []byte) {
 // Downloader listens for DownloadTask on tasksCh, downloads them, and sends DownloadedFile to doneCh.
 func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- DownloadedFile) {
 	log.Println("Starting downloader...")
-	swg := sizedwaitgroup.New(16) // Limit to 16 concurrent downloads
+	swg := sizedwaitgroup.New(16) // Limit to 16 concurrent downloading parts
 	defer close(doneCh)           // Ensure doneCh is closed when the function exits
 
 	for {
@@ -46,6 +46,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 			break
 		case task, ok := <-tasksCh:
 			if !ok {
+				log.Println("Closing downloader...")
 				return
 			}
 

@@ -169,7 +169,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 				return
 			}
 
-			if len(task.Bytes) == 0 {
+			if task.Size == 0 {
 				doneCh <- ScannedFile{
 					Size:     task.Size,
 					Filename: task.Filename,

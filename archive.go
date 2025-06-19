@@ -57,7 +57,7 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			}
 
 			if debug {
-				log.Println("Writing", task.Filename, "to tar")
+				log.Println("Writing", task.Filename, "to tar with size", task.Size)
 			}
 
 			// Create a tar header for the file

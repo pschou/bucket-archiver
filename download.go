@@ -66,7 +66,10 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 					}
 				}()
 
-				if task.Size <= 96*1024 { // If file is less than 32KB, download it in memory.
+				if task.Size == 0 {
+					// Empty files just head a header
+					doneCh <- DownloadedFile{Size: task.Size, Filename: task.Filename}
+				} else if task.Size <= 96*1024 { // If file is less than 32KB, download it in memory.
 					// Use a buffer pool to reuse memory for small files
 					// bufPool32 is for files <= 32KB, bufPool96 is for files <= 96KB
 					// This avoids frequent memory allocations and deallocations.

@@ -14,6 +14,8 @@ var (
 	TotalFiles int64 // Total number of files to download
 	TotalBytes int64 // Total bytes to download
 
+	ScannedFiles int64
+
 	DownloadedFiles int64
 	DownloadedBytes int64
 

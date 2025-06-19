@@ -3,15 +3,13 @@ package main
 import (
 	"context"
 	"log"
-	"sync"
 	"sync/atomic"
 )
 
 // Uploader listens for ArchiveFile on tasksCh, uploads them, and when the channel is closed sends a done
 func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- struct{}) {
 	log.Println("Starting uploader...")
-	wg := sync.WaitGroup{} // Ensure all are done
-	defer close(doneCh)    // Ensure doneCh is closed when the function exits
+	defer close(doneCh) // Ensure doneCh is closed when the function exits
 
 	for {
 		select {
@@ -23,12 +21,14 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 				log.Println("Closing uploader...")
 				return
 			}
-			wg.Add(1)
-			go func(task ArchiveFile) {
-				defer wg.Done()
-				uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8)
-				atomic.AddInt64(&UploadedFiles, 1)
-			}(task)
+
+			if debug {
+				log.Println("Sending file to upload", task.Filename)
+			}
+			if err := uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8); err != nil {
+				log.Fatal(err)
+			}
+			atomic.AddInt64(&UploadedFiles, 1)
 		}
 	}
 }

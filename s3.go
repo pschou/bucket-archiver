@@ -251,6 +251,9 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 		partSize++
 	}
 
+	if debug {
+		log.Println("Creating multipart upload for", filePath)
+	}
 	createResp, err := s3client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(dstBucket),
 		Key:    aws.String(key),
@@ -276,6 +279,9 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 		partLen := end - start
 
 		wg.Add(1)
+		if debug {
+			log.Println("Fragment", i, "of", filePath, "is", start, end)
+		}
 		go func(idx int, partNum int32, start, partLen int64) {
 			defer wg.Done()
 			upResp, err := s3client.UploadPart(ctx, &s3.UploadPartInput{

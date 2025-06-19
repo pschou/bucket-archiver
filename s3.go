@@ -21,66 +21,73 @@ var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
+	uploadSWD = sizedwaitgroup.New(2)  // Limit concurrent uploads to 2
+	s3Ready   = make(chan struct{}, 1) // Channel to signal S3 client readiness
 )
 
-func init() {
-	/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Fatal("Could not load default config,", err)
-	}*/
-
-	imdsClient := imds.New(imds.Options{})
-	gro, err := imdsClient.GetRegion(context.TODO(), &imds.GetRegionInput{})
-	if err != nil {
-		log.Fatal("Could not get region property,", err)
-	}
-
-	iam, err := imdsClient.GetIAMInfo(context.TODO(), &imds.GetIAMInfoInput{})
-	if err != nil {
-		log.Fatal("Could not get IAM property,", err)
-	}
-
-	region = gro.Region
-	log.Println("EC2 Environment:")
-	log.Println("  AWS_REGION:", gro.Region)
-	log.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
-	log.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
-
-	getConfig := func() error {
-		// Get a credential provider from the configured role attached to the currently running EC2 instance
-		provider := ec2rolecreds.New(func(o *ec2rolecreds.Options) {
-			o.Client = imdsClient
-		})
-
-		// Construct a client, wrap the provider in a cache, and supply the region for the desired service
-		s3client = s3.New(s3.Options{
-			Credentials: aws.NewCredentialsCache(provider),
-			Region:      region,
-		})
-		//fmt.Printf("config: %#v\n\n", sdkConfig)
-
-		return nil
-	}
-
-	fmt.Println("Testing call to AWS...")
-	if err := getConfig(); err != nil {
-		log.Fatal("Error getting config:", err)
-	}
-	refreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
-
+func initS3() {
+	log.Println("Initializing S3 client...")
 	go func() {
-		// Refresh credentials every 20 minutes to ensure low latency on requests
-		// and recovery should the server not have a policy assigned to it yet.
-		for {
-			time.Sleep(refreshTime)
-			log.Printf("Pulling new creds for s3Client %#v\n", s3client)
-			getConfig()
+		/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+		if err != nil {
+			log.Fatal("Could not load default config,", err)
+		}*/
+
+		imdsClient := imds.New(imds.Options{})
+		gro, err := imdsClient.GetRegion(context.TODO(), &imds.GetRegionInput{})
+		if err != nil {
+			log.Fatal("Could not get region property,", err)
 		}
+
+		iam, err := imdsClient.GetIAMInfo(context.TODO(), &imds.GetIAMInfoInput{})
+		if err != nil {
+			log.Fatal("Could not get IAM property,", err)
+		}
+
+		region = gro.Region
+		log.Println("EC2 Environment:")
+		log.Println("  AWS_REGION:", gro.Region)
+		log.Println("  IMDS_ARN:", iam.IAMInfo.InstanceProfileArn)
+		log.Println("  IMDS_ID:", iam.IAMInfo.InstanceProfileID)
+
+		getConfig := func() error {
+			// Get a credential provider from the configured role attached to the currently running EC2 instance
+			provider := ec2rolecreds.New(func(o *ec2rolecreds.Options) {
+				o.Client = imdsClient
+			})
+
+			// Construct a client, wrap the provider in a cache, and supply the region for the desired service
+			s3client = s3.New(s3.Options{
+				Credentials: aws.NewCredentialsCache(provider),
+				Region:      region,
+			})
+			//fmt.Printf("config: %#v\n\n", sdkConfig)
+
+			return nil
+		}
+
+		fmt.Println("Testing call to AWS...")
+		if err := getConfig(); err != nil {
+			log.Fatal("Error getting config:", err)
+		}
+		refreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
+
+		go func() {
+			// Refresh credentials every 20 minutes to ensure low latency on requests
+			// and recovery should the server not have a policy assigned to it yet.
+			for {
+				time.Sleep(refreshTime)
+				log.Printf("Pulling new creds for s3Client %#v\n", s3client)
+				getConfig()
+			}
+		}()
+		close(s3Ready) // Signal that the S3 client is ready
+		log.Println("S3 client initialized successfully")
 	}()
 }
 
 func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string) (string, error) {
+	<-s3Ready // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
 		Key:    &key,
@@ -117,6 +124,7 @@ func downloadObjectToTempFile(ctx context.Context, srcBucket string, key string)
 }
 
 func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, buf []byte) (int, error) {
+	<-s3Ready // Wait for the S3 client to be ready
 	getObj, err := s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(srcBucket),
 		Key:    &key,
@@ -134,6 +142,7 @@ func downloadObjectToBuffer(ctx context.Context, srcBucket string, key string, b
 }
 
 func processUpload(ctx context.Context, dstBucket string, filePath string) {
+	<-s3Ready // Wait for the S3 client to be ready
 	uploadSWD.Add()
 	go func(fileToUpload string) {
 		defer uploadSWD.Done()
@@ -147,6 +156,7 @@ func processUpload(ctx context.Context, dstBucket string, filePath string) {
 }
 
 func uploadFileToBucket(ctx context.Context, dstBucket string, key string, filePath string) error {
+	<-s3Ready // Wait for the S3 client to be ready
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)

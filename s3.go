@@ -21,13 +21,15 @@ var (
 	region   string
 	s3client *s3.Client
 
-	uploadSWD = sizedwaitgroup.New(2)  // Limit concurrent uploads to 2
-	s3Ready   = make(chan struct{}, 1) // Channel to signal S3 client readiness
+	uploadSWD = sizedwaitgroup.New(2) // Limit concurrent uploads to 2
+	s3Ready   = make(chan struct{})   // Channel to signal S3 client readiness
 )
 
-func initS3() {
+func init() {
 	log.Println("Initializing S3 client...")
 	go func() {
+		defer close(s3Ready) // Signal that the S3 client is ready
+
 		/*sdkConfig, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
 			log.Fatal("Could not load default config,", err)
@@ -81,7 +83,6 @@ func initS3() {
 				getConfig()
 			}
 		}()
-		close(s3Ready) // Signal that the S3 client is ready
 		log.Println("S3 client initialized successfully")
 	}()
 }

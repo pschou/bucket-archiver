@@ -70,7 +70,7 @@ func main() {
 	// Read the metadata and send it to the toDownload pipline
 	go ReadMetadata(ctx, toDownload)
 
-	StartMetrics(ctx)
+	StartMetrics()
 
 	// Consume the toDownload, download the file, and send to the downloaded pipeline
 	go Downloader(ctx, toDownload, downloadedFiles)

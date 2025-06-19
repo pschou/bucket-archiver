@@ -22,14 +22,10 @@ var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
 	memoryOnlyScan   = make([]byte, 1*1024*1024)     // Placeholder for memory-only scan logic
+
 )
 
 func main() {
-	// Load environment variables for source and destination buckets and tarball key
-	srcBucket := os.Getenv("SRC_BUCKET")
-	log.Println("Source bucket:", srcBucket)
-	dstBucket := os.Getenv("DST_BUCKET")
-	log.Println("Destination bucket:", dstBucket)
 
 	// Parse SIZECAP environment variable if set, otherwise use default
 	if sizeCapStr := os.Getenv("SIZECAP"); sizeCapStr != "" {
@@ -321,7 +317,7 @@ func main() {
 func Env(env, def, usage string) string {
 	fmt.Println("  #", usage)
 	if e := os.Getenv(env); len(e) > 0 {
-		fmt.Printf("  %s=%q\n", usage, env, e)
+		fmt.Printf("  %s=%q\n", env, e)
 		return e
 	}
 	fmt.Printf("  %s=%q (default)\n", env, def)

@@ -18,7 +18,7 @@ var (
 	}
 )
 
-func progressCp(rawdst io.Writer, src io.Reader, size int64, file string, remainObj int, remainBytes int64) (int64, error) {
+func progressCp(rawdst io.Writer, src io.Reader, size int64, file string, currentObj, remainObj int, remainBytes int64) (int64, error) {
 	// Progress copy function that reads from src and writes to dst while displaying progress
 	dst := bufio.NewWriter(rawdst)
 	defer dst.Flush() // Ensure all data is flushed to the writer
@@ -51,7 +51,7 @@ func progressCp(rawdst io.Writer, src io.Reader, size int64, file string, remain
 		if time.Since(lastPrint) > 250*time.Millisecond {
 			elapsed := time.Since(startTime)
 			rate := humanizeRate(written, elapsed)
-			fmt.Printf("\r%s: %s/%s (%s) with %d (%s) remaining", file,
+			fmt.Printf("\r%d %s: %s/%s (%s) with %d (%s) remaining", currentObj, file,
 				humanizeBytes(written), humanizeBytes(size), rate, remainObj, humanizeBytes(remainBytes))
 			lastPrint = time.Now()
 		}
@@ -64,7 +64,7 @@ func progressCp(rawdst io.Writer, src io.Reader, size int64, file string, remain
 	}
 	elapsed := time.Since(startTime)
 	rate := humanizeRate(written, elapsed)
-	fmt.Printf("\r%s: %s/%s (%s) with %d (%s) remaining\n", file,
+	fmt.Printf("\r%d %s: %s/%s (%s) with %d (%s) remaining\n", currentObj, file,
 		humanizeBytes(written), humanizeBytes(size), rate, remainObj, humanizeBytes(remainBytes))
 	return written, nil
 }

@@ -21,12 +21,11 @@ var (
 )
 
 func Env(env, def, usage string) string {
-	fmt.Println("  #", usage)
 	if e := os.Getenv(env); len(e) > 0 {
-		fmt.Printf("  %s=%q\n", env, e)
+		fmt.Printf("  %s=%q  # %s\n", env, e, usage)
 		return e
 	}
-	fmt.Printf("  %s=%q (default)\n", env, def)
+	fmt.Printf("  %s=%q (default)  # %s\n", env, def, usage)
 	return def
 }
 

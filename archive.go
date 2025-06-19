@@ -76,8 +76,10 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			}
 
 			if task.TempFile == "" {
-				if _, err := io.Copy(archiveTar, bytes.NewReader(task.Bytes)); err != nil {
+				if n, err := io.Copy(archiveTar, bytes.NewReader(task.Bytes)); err != nil {
 					log.Fatalf("failed to write file %s to tar: %v", task.Filename, err)
+				} else if debug {
+					log.Println("Wrote", n, "bytes to tar")
 				}
 			} else {
 				fh, err := os.Open(task.TempFile)
@@ -85,8 +87,10 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 					log.Fatalf("failed to open temp file %s: %v", task.TempFile, err)
 				}
 
-				if _, err := io.Copy(archiveTar, fh); err != nil {
+				if n, err := io.Copy(archiveTar, fh); err != nil {
 					log.Fatalf("failed to write file %s to tar: %v", task.Filename, err)
+				} else if debug {
+					log.Println("Wrote", n, "bytes to tar")
 				}
 				fh.Close()
 			}

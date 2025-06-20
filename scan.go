@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	scanMutex      sync.Mutex            // semaphore to limit concurrent scans
 	clamavInstance *clamav.Clamav        // ClamAV instance for scanning files
 	virusScanMap   = map[string]string{} // Metadata map for virus scan
 	scanReady      sync.WaitGroup        // channel to signal scan readiness
 
-	clamLog = log.New(os.Stderr, "clamav: ", log.LstdFlags)
+	clamLog         = log.New(os.Stderr, "clamav: ", log.LstdFlags)
+	concurrentScans = EnvInt("CONCURRENT_SCANNERS", 3, "How many concurrent scanners can run at once")
 )
 
 // ScannedFile represents a file that has been scanned.
@@ -157,7 +157,7 @@ func init() {
 // Scanner listens for Downloaded on tasksCh, scans them, and sends ScannedFile to doneCh.
 func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- ScannedFile) {
 	log.Println("Starting scanner...")
-	swg := sizedwaitgroup.New(3)
+	swg := sizedwaitgroup.New(concurrentScans)
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
 
 	scanReady.Wait() // Wait for the ClamAV instance to be ready

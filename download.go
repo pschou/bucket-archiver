@@ -30,9 +30,11 @@ func putMemory(mem []byte) {
 	if len(mem) <= 32*1024 {
 		bufPool32.Put(mem)
 	} else {
-		bufPool96.Put(mem)
+		bufPoolLarge.Put(mem)
 	}
 }
+
+var maxMemObject = int64(EnvInt("MAX_IN_MEM", 96, "Maximum in memory object in kb"))
 
 // Downloader listens for DownloadTask on tasksCh, downloads them, and sends DownloadedFile to doneCh.
 func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- DownloadedFile) {
@@ -70,15 +72,15 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 				if task.Size == 0 {
 					// Empty files just head a header
 					doneCh <- DownloadedFile{Size: task.Size, Filename: task.Filename}
-				} else if task.Size <= 96*1024 { // If file is less than 32KB, download it in memory.
+				} else if task.Size <= maxMemObject*1024 { // If file is less than 32KB, download it in memory.
 					// Use a buffer pool to reuse memory for small files
-					// bufPool32 is for files <= 32KB, bufPool96 is for files <= 96KB
+					// bufPool32 is for files <= 32KB, bufPoolLarge is for large files
 					// This avoids frequent memory allocations and deallocations.
 					var mem []byte
 					if task.Size <= 32*1024 {
 						mem = bufPool32.Get().([]byte)
 					} else {
-						mem = bufPool96.Get().([]byte)
+						mem = bufPoolLarge.Get().([]byte)
 					}
 
 					// If the file size is small enough, we can download it directly in memory

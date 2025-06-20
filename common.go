@@ -13,9 +13,9 @@ var (
 			return make([]byte, 32*1024)
 		},
 	} // bufPool is a sync.Pool to reuse byte slices for copying data
-	bufPool96 = sync.Pool{
+	bufPoolLarge = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, 96*1024)
+			return make([]byte, maxMemObject*1024)
 		},
 	}
 )

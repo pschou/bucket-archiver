@@ -257,9 +257,10 @@ func uploadFileInParts(ctx context.Context, dstBucket, key, filePath string, par
 		u.PartSize = partMiBs * 1024 * 1024
 	})
 	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(dstBucket),
-		Key:    aws.String(key),
-		Body:   &UploadReader{file},
+		Bucket:   aws.String(dstBucket),
+		Key:      aws.String(key),
+		Body:     &UploadReader{file},
+		Metadata: virusScanMap,
 	})
 	if err != nil {
 		var apiErr smithy.APIError

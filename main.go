@@ -73,6 +73,7 @@ func main() {
 		Done            = make(chan struct{})
 	)
 
+	// Create a channel for error events to be handled by the error logger goroutine
 	go func() {
 		log.Println("Watching for errors...")
 		f, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -104,6 +105,10 @@ func main() {
 	go Uploader(ctx, ArchiveFiles, Done)
 
 	<-Done // Wait for all uploads to finish
+
+	close(errCh) // Close error channel to ensure the logs are written to disk
+
+	// Stop the metrics collection and clean up any resources
 	StopMetrics()
 	log.Println("All uploads completed successfully.")
 	time.Sleep(time.Second)

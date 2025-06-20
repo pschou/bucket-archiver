@@ -16,9 +16,11 @@ var (
 	sizeCapLimit     int64
 	debug            = os.Getenv("DEBUG") != ""
 	ArchiveName      = Env("ARCHIVE_NAME", "archive_%07d.tgz", "Output template")
+	version          = "1.0.0"
 )
 
 func main() {
+	log.Printf("Starting bucket-archiver v%s: downloading, archiving, and uploading S3 objects.", version)
 	// Parse SIZECAP environment variable if set, otherwise use default
 	sizeCapStr := Env("SIZECAP", "2G", "Limit the size of the uncompressed archive payload")
 

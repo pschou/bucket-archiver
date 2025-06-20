@@ -42,9 +42,10 @@ func main() {
 		fileStats, err := ReadLastLineJSONStats(metadataFileName)
 		if err != nil {
 			log.Printf("failed to read metadata file: %v", err)
+		} else {
+			TotalBytes = fileStats.Size
+			TotalFiles = fileStats.Count
 		}
-		TotalBytes = fileStats.Size
-		TotalFiles = fileStats.Count
 	} else if os.IsNotExist(err) {
 		log.Printf("creating metadata file %q", metadataFileName)
 		// Create metadata file if it doesn't exist

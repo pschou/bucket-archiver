@@ -24,21 +24,21 @@ func ReadLastLineJSONStats(path string) (*FileStats, error) {
 	}
 	defer f.Close()
 
-	const readBlockSize = 4096
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
+
 	size := fi.Size()
 	if size == 0 {
 		return nil, errors.New("file is empty")
 	}
 
 	offset := size
-	if offset > 1000 {
-		offset -= 1000
+	if offset > 2000 {
+		offset = offset - 2000
 	}
-	tmp := make([]byte, 1000)
+	tmp := make([]byte, 2000)
 	_, err = f.ReadAt(tmp, offset)
 	if err != nil && err != io.EOF {
 		return nil, err

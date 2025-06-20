@@ -28,7 +28,7 @@ type ArchiveFile struct {
 }
 
 // Archiver listens for ScannedFile on tasksCh, archives them, and sends to a bucket.
-func Archiver(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- ArchiveFile) {
+func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- ArchiveFile) {
 	log.Println("Starting archiver...")
 	defer close(doneCh)
 

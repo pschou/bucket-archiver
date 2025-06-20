@@ -60,15 +60,15 @@ func main() {
 	}
 	log.Printf("Total objects: %d, Total size: %s", TotalFiles, humanizeBytes(TotalBytes))
 
-	//scanReady.Wait() // Wait for the ClamAV instance to be ready
+	scanReady.Wait() // Wait for the ClamAV instance to be ready
 
 	log.Println("Making pipeline channels.")
 	var (
 		toDownload      = make(chan DownloadTask, 2)
 		downloadedFiles = make(chan DownloadedFile, 1)
-		//scannedFiles    = make(chan ScannedFile, 2)
-		ArchiveFiles = make(chan ArchiveFile, 2)
-		Done         = make(chan struct{})
+		scannedFiles    = make(chan ScannedFile, 2)
+		ArchiveFiles    = make(chan ArchiveFile, 2)
+		Done            = make(chan struct{})
 	)
 
 	go func() {
@@ -94,10 +94,10 @@ func main() {
 	go Downloader(ctx, toDownload, downloadedFiles)
 
 	// Consume the downloaded, scan, and then send to the scannedFiles pipeline
-	//go Scanner(ctx, downloadedFiles, scannedFiles)
+	go Scanner(ctx, downloadedFiles, scannedFiles)
 
 	// Consume the scanned files pipeline and put in archive
-	go Archiver(ctx, downloadedFiles, ArchiveFiles)
+	go Archiver(ctx, scannedFiles, ArchiveFiles)
 
 	go Uploader(ctx, ArchiveFiles, Done)
 

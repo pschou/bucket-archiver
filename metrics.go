@@ -64,7 +64,7 @@ func StartMetrics(ctx context.Context) {
 
 func Println(v ...any) {
 	fmt.Fprintf(os.Stderr, "\r%s\r", spaces(len(statsLine)))
-	fmt.Println(v)
+	fmt.Println(v...)
 }
 
 func spaces(i int) (s string) {

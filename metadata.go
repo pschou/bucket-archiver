@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -20,6 +21,9 @@ type MetaEntry struct {
 func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount int64, err error) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
+
+	prefixFilter := Env("PREFIX_FILTER", "", "Bucket prefix selector")
+
 	// List objects in source bucket
 	paginator := s3.NewListObjectsV2Paginator(s3client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(srcBucket),
@@ -56,6 +60,9 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 		for _, obj := range page.Contents {
 			// Prepare metadata file content
 			if obj.Key == nil || obj.Size == nil {
+				continue
+			}
+			if prefixFilter != "" && !strings.HasPrefix(*obj.Key, prefixFilter) {
 				continue
 			}
 

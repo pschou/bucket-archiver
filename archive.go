@@ -123,7 +123,7 @@ func OpenArchive() string {
 	}
 
 	// Create a gzip writer and tar writer
-	archiveGzip, err = gzip.NewWriterLevel(archiveFile, gzip.BestCompression)
+	archiveGzip, err = gzip.NewWriterLevel(archiveFile, gzip.DefaultCompression)
 	if err != nil {
 		log.Fatalf("failed to create compressor for tgz file: %v", err)
 	}

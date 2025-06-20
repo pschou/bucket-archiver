@@ -41,7 +41,7 @@ func main() {
 		// Read metadata from local file
 		fileStats, err := ReadLastLineJSONStats(metadataFileName)
 		if err != nil {
-			log.Fatalf("failed to read metadata file: %v", err)
+			log.Printf("failed to read metadata file: %v", err)
 		}
 		TotalBytes = fileStats.Size
 		TotalFiles = fileStats.Count

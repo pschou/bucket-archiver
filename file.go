@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
-	"strings"
 )
 
 // FileStats holds the total file count and size.
@@ -34,50 +34,25 @@ func ReadLastLineJSONStats(path string) (*FileStats, error) {
 		return nil, errors.New("file is empty")
 	}
 
-	var (
-		buf      []byte
-		offset   int64
-		readSize int
-	)
-	offset = size
-	for {
-		if offset < readBlockSize {
-			readSize = int(offset)
-			offset = 0
-		} else {
-			readSize = readBlockSize
-			offset -= int64(readSize)
-		}
-		tmp := make([]byte, readSize)
-		_, err := f.ReadAt(tmp, offset)
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-		buf = append(tmp, buf...)
-		if idx := strings.LastIndex(string(buf), "\n"); idx != -1 && offset != 0 {
-			buf = buf[idx+1:]
-			break
-		}
-		if offset == 0 {
-			break
-		}
+	offset := size
+	if offset > 1000 {
+		offset -= 1000
+	}
+	tmp := make([]byte, 1000)
+	_, err = f.ReadAt(tmp, offset)
+	if err != nil && err != io.EOF {
+		return nil, err
 	}
 
-	scanner := bufio.NewScanner(strings.NewReader(string(buf)))
+	scanner := bufio.NewScanner(bytes.NewReader(tmp))
 	var lastLine string
 	for scanner.Scan() {
 		lastLine = scanner.Text()
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	if lastLine == "" {
-		return nil, errors.New("no last line found")
+		var stats FileStats
+		if err := json.Unmarshal([]byte(lastLine), &stats); err == nil {
+			return &stats, nil
+		}
 	}
 
-	var stats FileStats
-	if err := json.Unmarshal([]byte(lastLine), &stats); err != nil {
-		return nil, err
-	}
-	return &stats, nil
+	return nil, errors.New("no last line found")
 }

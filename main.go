@@ -13,22 +13,24 @@ import (
 
 var (
 	metadataFileName = "metadata.jsonl"
-	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
+	sizeCapLimit     int64
 	debug            = os.Getenv("DEBUG") != ""
 	ArchiveName      = Env("ARCHIVE_NAME", "archive_%07d.tgz", "Output template")
 )
 
 func main() {
 	// Parse SIZECAP environment variable if set, otherwise use default
-	if sizeCapStr := os.Getenv("SIZECAP"); sizeCapStr != "" {
-		parsed, err := parseByteSize(sizeCapStr)
-		if err != nil {
-			log.Fatalf("failed to parse SIZECAP: %v", err)
-		}
-		sizeCapLimit = parsed
-		log.Printf("Using sizeCapLimit from SIZECAP env: %d bytes", sizeCapLimit)
+	sizeCapStr := Env("SIZECAP", "2G", "Limit the size of the uncompressed archive payload")
+
+	var err error
+	sizeCapLimit, err = parseByteSize(sizeCapStr)
+	if err != nil {
+		log.Fatalf("failed to parse SIZECAP: %v", err)
+	} else if sizeCapLimit < 100 {
+		log.Fatalf("SIZECAP value %d is too small; must be at least 100 bytes", parsed)
 	}
-	log.Printf("Size cap limit for each tarball contents: %d bytes", sizeCapLimit)
+
+	//log.Printf("Size cap limit for each tarball contents: %d bytes", sizeCapLimit)
 
 	// Default context for processing
 	ctx := context.Background()

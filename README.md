@@ -87,65 +87,47 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 First make sure clamav-lib is installed.  If there is an error with the installed version of clamav and the compiled binary, use the build.sh to build a new binary.
 
 ```
-$ SRC_BUCKET=pj-src DST_BUCKET=pj-dst ./s3archiver
-2025/06/18 16:43:33 EC2 Environment:
-2025/06/18 16:43:33   AWS_REGION: us-east-1
-2025/06/18 16:43:33   IMDS_ARN: arn:aws:iam::659486592847:instance-profile/ec2-s3-full-access
-2025/06/18 16:43:33   IMDS_ID: AIPAZTDDWZ5H52NMAZHCM
-Testing call to AWS...
-  # The refresh interval for grabbing new AMI credentials
-  REFRESH="20m" (default)
-2025/06/18 16:43:33 Initializing ClamAV...
-2025/06/18 16:43:52 db load succeed: 8706313
-2025/06/18 16:43:57 engine compiled successfully
-2025/06/18 16:43:57 ClamAV DB version: 27673
-2025/06/18 16:43:57 ClamAV DB time: 2025-06-18 09:48:55 +0000 UTC
-2025/06/18 16:43:57 Max scan size: 42949672960
-2025/06/18 16:43:57 Max scan time: 90000
-2025/06/18 16:43:57 Max file size: 2147483647
-2025/06/18 16:43:57 ClamAV initialized successfully
-2025/06/18 16:43:57 <virus_scan><vendor>ClamAV lib</vendor><version>27673</version><signature_date>2025-06-18T09:48:55Z</signature_date><result>pass</result></virus_scan>
-2025/06/18 16:43:57 Source bucket: pj-src
-2025/06/18 16:43:57 Destination bucket: pj-dst
-2025/06/18 16:43:57 Size cap limit for each tarball contents: 1073741824 bytes
-2025/06/18 16:43:57 metadata file metadata.jsonl already exists in the local filesystem
-2025/06/18 16:43:57 Total objects: 42, Total size: 5284873635 bytes
-2025/06/18 16:43:57 Starting to process metadata file: metadata.jsonl
-1/42 0.00%: 10.txt
-2/42 0.00%: 11.txt
-3/42 0.00%: 12.txt
-4/42 0.00%: 13.txt
-5/42 0.00%: 14.txt
-6/42 0.00%: 15.txt
-7/42 0.00%: 16.txt
-8/42 0.00%: 17.txt
-9/42 0.00%: 18.txt
-10/42 0.00%: 19.txt
-11/42 0.00%: 20.txt
-12/42 0.00%: test10.dat
-13/42 3.23%: test11.dat
-14/42 6.45%: test12.dat
-15/42 9.68%: test13.dat
-16/42 12.90%: test14.dat
-17/42 16.13%: test15.dat
-18/42 19.35%: test16.dat
-Closing archive_0000000.tgz, compression: -0.03% (compressed: 1193677746 bytes, uncompressed: 1193358699 bytes)
-Uploading archive_0000000.tgz to bucket pj-dst
-19/42 22.58%: test17.dat
-20/42 25.81%: test18.dat
-2025/06/18 16:45:48 Uploaded archive_0000000.tgz to bucket pj-dst
-21/42 29.03%: test19.dat
-22/42 32.26%: test20.dat
-23/42 35.48%: test21.dat
-24/42 38.71%: test22.dat
-25/42 41.94%: test23.dat
-Closing archive_0000001.tgz, compression: -0.03% (compressed: 1193677480 bytes, uncompressed: 1193358523 bytes)
-Uploading archive_0000001.tgz to bucket pj-dst
-26/42 45.16%: test24.dat
-2025/06/18 16:47:08 Uploaded archive_0000001.tgz to bucket pj-dst
-27/42 48.39%: test25.dat
-28/42 51.61%: test26.dat
-29/42 54.84%: test27.dat
-30/42 58.06%: test28.dat
+$ SRC_BUCKET=pj-src DST_BUCKET=pj-dst CONCURRENT_SCANNERS=16 MAX_IN_MEM=1024 CHAN_DOWNLOADED_FILES=200 PREFIX_FILTER='userdata/' ARCHIVE_NAME="prescan/archive_bigboy_%07d.tgz" SIZECAP="8G" ./s3archiver
+  MAX_IN_MEM=1024                # Maximum in memory object in kb
+  ARCHIVE_NAME="prescan/archive_bigboy_%07d.tgz" # Output template
+  CONCURRENT_SCANNERS=16         # How many concurrent scanners can run at once
+awscli: 2025/06/20 15:51:49 Initializing S3 client...
+  REFRESH="20m" (default)        # The refresh interval for grabbing new AMI credentials
+  SRC_BUCKET="pj-src"            # The source S3 bucket name
+  DST_BUCKET="pj-dst"            # The destination S3 bucket name
+clamav: 2025/06/20 15:51:49 Initializing ClamAV...
+  DEFINITIONS="./db" (default)   # The path with the ClamAV definitions
+  MAX_SCANTIME=180000 (default)  # Max scan time in milliseconds
+Starting bucket-archiver v20250620.1550: downloading, archiving, and uploading S3 objects.
+  SIZECAP="8G"                   # Limit the size of the uncompressed archive payload
+2025/06/20 15:51:49 Making pipeline channels.
+  CHAN_TODO_DOWNLOAD=10 (default) # Buffer size for toDownload channel
+  CHAN_DOWNLOADED_FILES=200      # Buffer size for downloadedFiles channel
+  CHAN_SCANNED_FILES=10 (default) # Buffer size for scannedFiles channel
+  CHAN_ARCHIVE_FILES=2 (default) # Buffer size for ArchiveFiles channel
+2025/06/20 15:51:49 metadata file metadata.jsonl already exists in the local filesystem
+2025/06/20 15:51:49 Total objects: 8800150, Total size: 2.57 TiB
+awscli: 2025/06/20 15:51:49 EC2 Environment:
+awscli: 2025/06/20 15:51:49   AWS_REGION: us-east-1
+awscli: 2025/06/20 15:51:49   IMDS_ARN: arn:aws:iam::751442555555:instance-profile/EC2SSMRole
+awscli: 2025/06/20 15:51:49   IMDS_ID: AIPA255LXON7UAKM4LAGS
+awscli: 2025/06/20 15:51:49 Testing call to AWS...
+awscli: 2025/06/20 15:51:49 S3 client initialized successfully
+clamav: 2025/06/20 15:52:03 db load succeed: 8706316
+clamav: 2025/06/20 15:52:08 engine compiled successfully
+clamav: 2025/06/20 15:52:08 ClamAV DB version: 27675
+clamav: 2025/06/20 15:52:08 ClamAV DB time: 2025-06-20 08:35:04 +0000 UTC
+clamav: 2025/06/20 15:52:08 Max scan size: 42949672960
+clamav: 2025/06/20 15:52:08 Max scan time: 180000
+clamav: 2025/06/20 15:52:08 Max file size: 2147483647
+clamav: 2025/06/20 15:52:08 ClamAV initialized successfully
+2025/06/20 15:52:08 Watching for errors...
+2025/06/20 15:52:08 Starting uploader...
+2025/06/20 15:52:08 Starting downloader...
+2025/06/20 15:52:08 Starting scanner...
+2025/06/20 15:52:08 Reading in metadata.jsonl for processing...
+2025/06/20 15:52:08 Starting metrics...
+2025/06/20 15:52:08 Starting archiver...
+Download: 7514/8800150 3.22 GiB/2.57 TiB (0 B/s)  Scanned: 7297  Upload: 0 0 B (0 B/s) ETA: ~60h49m0s
 ...
 ```

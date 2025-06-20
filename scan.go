@@ -59,7 +59,7 @@ func init() {
 		err := clamavInstance.Init(clamav.SCAN_OPTIONS{
 			General:   clamav.CL_SCAN_GENERAL_ALLMATCHES,
 			Parse:     ^uint(0), // clamav.CL_SCAN_PARSE_ARCHIVE | clamav.CL_SCAN_PARSE_ELF,
-			Heuristic: clamav.CL_SCAN_HEURISTIC_EXCEEDS_MAX,
+			Heuristic: 0,        // clamav.CL_SCAN_HEURISTIC_EXCEEDS_MAX,
 			Mail:      0,
 			Dev:       0,
 		})

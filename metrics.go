@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -23,7 +24,8 @@ var (
 	UploadedBytes int64
 	metricsTicker *time.Ticker
 
-	statsLine string
+	statsLine  string
+	statsMutex sync.Mutex
 )
 
 func StartMetrics(ctx context.Context) {
@@ -46,6 +48,7 @@ func StartMetrics(ctx context.Context) {
 				now := time.Now()
 				elapsed := now.Sub(lastTime)
 
+				statsMutex.Lock()
 				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(statsLine)))
 
 				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
@@ -54,6 +57,8 @@ func StartMetrics(ctx context.Context) {
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 
 				fmt.Fprintf(os.Stderr, "\r%s", statsLine)
+				statsMutex.Unlock()
+
 				lastBytes = curBytes
 				lastUpBytes = curUpBytes
 				lastTime = now
@@ -63,8 +68,12 @@ func StartMetrics(ctx context.Context) {
 }
 
 func Println(v ...any) {
+	statsMutex.Lock()
+
 	fmt.Fprintf(os.Stderr, "\r%s\r", spaces(len(statsLine)))
 	fmt.Println(v...)
+
+	statsMutex.Unlock()
 }
 
 func spaces(i int) (s string) {

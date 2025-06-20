@@ -61,7 +61,7 @@ func StartMetrics(ctx context.Context) {
 }
 
 func spaces(i int) (s string) {
-	for i > 0 {
+	for i >= 0 {
 		s += " "
 		i--
 	}

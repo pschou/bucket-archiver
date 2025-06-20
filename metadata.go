@@ -25,6 +25,8 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 	var prefix, slash *string
 	if prefixFilter != "" {
 		prefix = aws.String(prefixFilter)
+	}
+	if Env("PREFIX_DELIM", "", "Use delimitor") != "" {
 		slash = aws.String("/")
 	}
 

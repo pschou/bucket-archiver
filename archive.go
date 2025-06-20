@@ -111,7 +111,7 @@ func Archiver(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- 
 func OpenArchive() string {
 	// Create a .tgz file on disk and prepare to write to it
 	archiveCount++
-	tgzFilePath := fmt.Sprintf("archive_%07d.tgz", archiveCount)
+	tgzFilePath := fmt.Sprintf(ArchiveName, archiveCount)
 	var err error
 	archiveFile, err = os.Create(tgzFilePath)
 	if err != nil {

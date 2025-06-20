@@ -14,6 +14,7 @@ var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     = int64(1 * 1024 * 1024 * 1024) // 1 GB
 	debug            = os.Getenv("DEBUG") != ""
+	ArchiveName      = Env("ARCHIVE_NAME", "archive_%07d.tgz", "Output template")
 )
 
 func main() {

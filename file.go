@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"os"
 )
 
@@ -41,13 +39,9 @@ func ReadLastLineJSONStats(path string) (*FileStats, error) {
 	var lastLine string
 	for scanner.Scan() {
 		lastLine = scanner.Text()
-		fmt.Println("last line", lastLine)
 		var stats FileStats
-		if err := json.Unmarshal([]byte(lastLine), &stats); err == nil {
+		if err := json.Unmarshal([]byte(lastLine), &stats); err == nil && stats.Count > 0 {
 			return &stats, nil
-		} else {
-			log.Println(err)
-
 		}
 	}
 

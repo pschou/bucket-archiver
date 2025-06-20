@@ -22,15 +22,17 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
 
 	prefixFilter := Env("PREFIX_FILTER", "", "Bucket prefix selector")
-	var prefix *string
+	var prefix, slash *string
 	if prefixFilter != "" {
-		prefix = &prefixFilter
+		prefix = aws.String(prefixFilter)
+		slash = aws.String("/")
 	}
 
 	// List objects in source bucket
 	paginator := s3.NewListObjectsV2Paginator(s3client, &s3.ListObjectsV2Input{
-		Bucket: aws.String(srcBucket),
-		Prefix: prefix,
+		Bucket:    aws.String(srcBucket),
+		Prefix:    prefix,
+		Delimiter: slash,
 	})
 
 	// Open metadata.json for writing

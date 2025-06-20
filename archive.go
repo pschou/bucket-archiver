@@ -81,7 +81,6 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			}
 			archiveBytesWritten += task.Size
 
-			log.Println("tempfile = ", task.TempFile)
 			if task.TempFile == "" {
 				if n, err := io.Copy(archiveTar, bytes.NewReader(task.Bytes)); err != nil {
 					log.Fatalf("failed to write file %s to tar: %v", task.Filename, err)

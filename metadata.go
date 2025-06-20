@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -16,6 +17,11 @@ type MetaEntry struct {
 	Key  string `json:"key"`
 	Size int64  `json:"size"`
 }
+
+var (
+	subSetFiles = Env("SUBSET", "", "Subset the files by START:STRIDE or START:STRIDE:END")
+	skipFiles   = make(map[string]struct{})
+)
 
 func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount int64, err error) {
 	s3Ready.Wait() // Wait for the S3 client to be ready
@@ -101,6 +107,16 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 }
 
 func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
+
+	f, err := os.Open("upload.log")
+	if err == nil {
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			skipFiles[strings.TrimSpace(scanner.Text())] = struct{}{}
+		}
+		f.Close()
+	}
+
 	log.Println("Reading in", metadataFileName, "for processing...")
 	defer close(doFiles)
 
@@ -113,8 +129,35 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 
 	scanner := bufio.NewScanner(metadataFile)
 
-	//lineNumber := 0
+	var start, stride, end int
+	if subSetFiles == "" {
+		stride = 1
+		end = -1
+	} else if n, err := fmt.Sscanf(subSetFiles, "%d:%d:%d", &start, &stride, &end); err == nil && n == 3 {
+		// All fields are provided, NOOP
+	} else if n, err = fmt.Sscanf(subSetFiles, "%d:%d", &start, &stride); err == nil && n == 2 {
+		// Try START:STRIDE
+		end = -1 // Use -1 or another sentinel value to indicate "no end"
+	}
+
+	lineNumber := 0
+	strider := 0
 	for scanner.Scan() {
+		lineNumber++
+		if start > 0 {
+			start--
+			continue
+		}
+		if end != -1 && lineNumber > end {
+			break
+		}
+		if stride > 1 {
+			strider = (strider + 1) % stride
+			if strider != 1 {
+				continue
+			}
+		}
+
 		// Parse each line as JSON to get file metadata
 		// Assuming each line in metadata.jsonl is a JSON object with "name" and "size" fields
 		var entry MetaEntry
@@ -122,6 +165,9 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 		if err := json.Unmarshal(line, &entry); err != nil {
 			log.Printf("failed to unmarshal line %q: %v", line, err)
 			break // likely EOF or malformed line
+		}
+		if _, ok := skipFiles[entry.Key] {
+			continue
 		}
 		if entry.Key == "" {
 			break

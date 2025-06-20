@@ -22,15 +22,6 @@ var (
 	concurrentScans = EnvInt("CONCURRENT_SCANNERS", 3, "How many concurrent scanners can run at once")
 )
 
-// ScannedFile represents a file that has been scanned.
-type ScannedFile struct {
-	Size     int64
-	Filename string
-
-	TempFile string // Temporary file path if the file is large.
-	Bytes    []byte // If the file is small, we can keep it in memory.
-}
-
 func init() {
 	clamLog.Println("Initializing ClamAV...")
 	definitionsPath := Env("DEFINITIONS", "./db", "The path with the ClamAV definitions")
@@ -156,8 +147,8 @@ func init() {
 	}()
 }
 
-// Scanner listens for Downloaded on tasksCh, scans them, and sends ScannedFile to doneCh.
-func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- ScannedFile) {
+// Scanner listens for WorkFile on tasksCh, scans them, and sends WorkFile to doneCh.
+func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFile) {
 	log.Println("Starting scanner...")
 	swg := sizedwaitgroup.New(concurrentScans)
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
@@ -176,12 +167,12 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 			}
 
 			swg.Add()
-			go func(task DownloadedFile) {
+			go func(task WorkFile) {
 				defer swg.Done()
 				defer atomic.AddInt64(&ScannedFiles, 1)
 
 				if task.Size == 0 {
-					doneCh <- ScannedFile{
+					doneCh <- WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 					}
@@ -225,7 +216,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 						putMemory(task.Bytes)
 						return // Skip this file if memory scan fails
 					}
-					doneCh <- ScannedFile{
+					doneCh <- WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 						TempFile: task.TempFile,
@@ -257,7 +248,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 						os.Remove(task.TempFile) // Clean up the temporary file after scanning
 						return                   // Skip this file if a virus is found
 					}
-					doneCh <- ScannedFile{
+					doneCh <- WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 						TempFile: task.TempFile,

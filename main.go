@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -14,9 +15,10 @@ import (
 var (
 	metadataFileName = "metadata.jsonl"
 	sizeCapLimit     int64
-	debug            = os.Getenv("DEBUG") != ""
+	debug            = Env("DEBUG", "", "Enable debugging") != ""
 	ArchiveName      = Env("ARCHIVE_NAME", "archive_%07d.tgz", "Output template")
 	version          = "1.0.0"
+	scanningEnabled  = Env("DISABLE_SCANNER", "", "Disable the scanner") == ""
 )
 
 func main() {
@@ -36,8 +38,8 @@ func main() {
 	log.Println("Making pipeline channels.")
 	var (
 		toDownload      = make(chan DownloadTask, EnvInt("CHAN_TODO_DOWNLOAD", 10, "Buffer size for toDownload channel"))
-		downloadedFiles = make(chan DownloadedFile, EnvInt("CHAN_DOWNLOADED_FILES", 20, "Buffer size for downloadedFiles channel"))
-		scannedFiles    = make(chan ScannedFile, EnvInt("CHAN_SCANNED_FILES", 10, "Buffer size for scannedFiles channel"))
+		downloadedFiles = make(chan WorkFile, EnvInt("CHAN_DOWNLOADED_FILES", 20, "Buffer size for downloadedFiles channel"))
+		scannedFiles    = make(chan WorkFile, EnvInt("CHAN_SCANNED_FILES", 10, "Buffer size for scannedFiles channel"))
 		ArchiveFiles    = make(chan ArchiveFile, EnvInt("CHAN_ARCHIVE_FILES", 2, "Buffer size for ArchiveFiles channel"))
 		Done            = make(chan struct{})
 	)
@@ -86,8 +88,14 @@ func main() {
 		defer f.Close()
 
 		for errEvent := range errCh {
-			Println(errEvent.Err)
-			fmt.Fprintln(f, errEvent.Filename, errEvent.Err)
+			data, err := json.Marshal(errEvent)
+			if err != nil {
+				log.Printf("failed to marshal error event: %v", err)
+				continue
+			}
+			if _, err := fmt.Fprintf(f, "%s\n", data); err != nil {
+				log.Printf("failed to write error event to file: %v", err)
+			}
 		}
 	}()
 
@@ -99,11 +107,16 @@ func main() {
 	// Consume the toDownload, download the file, and send to the downloaded pipeline
 	go Downloader(ctx, toDownload, downloadedFiles)
 
-	// Consume the downloaded, scan, and then send to the scannedFiles pipeline
-	go Scanner(ctx, downloadedFiles, scannedFiles)
+	if scanningEnabled {
+		// Consume the downloaded, scan, and then send to the scannedFiles pipeline
+		go Scanner(ctx, downloadedFiles, scannedFiles)
 
-	// Consume the scanned files pipeline and put in archive
-	go Archiver(ctx, scannedFiles, ArchiveFiles)
+		// Consume the scanned files pipeline and put in archive
+		go Archiver(ctx, scannedFiles, ArchiveFiles)
+	} else {
+		// Consume the scanned files pipeline and put in archive
+		go Archiver(ctx, downloadedFiles, ArchiveFiles)
+	}
 
 	go Uploader(ctx, ArchiveFiles, Done)
 

@@ -97,7 +97,7 @@ func init() {
 			// and recovery should the server not have a policy assigned to it yet.
 			for {
 				time.Sleep(s3RefreshTime)
-				awscliLog.Printf("Pulling new creds for s3Client %#v\n", s3client)
+				//awscliLog.Printf("Pulling new creds for s3Client %#v\n", s3client)
 				getConfig()
 			}
 		}()

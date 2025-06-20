@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -69,6 +70,7 @@ func StartMetrics(ctx context.Context) {
 				} else {
 					remaining = "ETA: N/A"
 				}
+				remaining = strings.TrimSuffix(strings.TrimSuffix(remaining, "0s"), "0m")
 
 				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s) %s", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),

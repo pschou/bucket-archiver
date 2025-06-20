@@ -33,8 +33,8 @@ func StartMetrics(ctx context.Context) {
 	go func() {
 		//defer metricsTicker.Stop()
 		log.Println("Starting metrics...")
+		var line string
 		for {
-			var line string
 			select {
 			case <-ctx.Done():
 				// Context is done, exit the goroutine
@@ -45,12 +45,12 @@ func StartMetrics(ctx context.Context) {
 				now := time.Now()
 				elapsed := now.Sub(lastTime)
 
+				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(line)))
 				line = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
 					ScannedFiles,
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 				fmt.Fprintf(os.Stderr, "\r%s", line)
-				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(line)))
 				lastBytes = curBytes
 				lastUpBytes = curUpBytes
 				lastTime = now
@@ -60,7 +60,7 @@ func StartMetrics(ctx context.Context) {
 }
 
 func spaces(i int) (s string) {
-	for i >= 0 {
+	for i > 0 {
 		s += " "
 		i--
 	}

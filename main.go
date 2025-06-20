@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -72,8 +73,15 @@ func main() {
 
 	go func() {
 		log.Println("Watching for errors...")
+		f, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("failed to open err log file: %v", err)
+		}
+		defer f.Close()
+
 		for errEvent := range errCh {
 			Println(errEvent.Err)
+			fmt.Fprintln(f, errEvent.Filename, errEvent.Err)
 		}
 	}()
 

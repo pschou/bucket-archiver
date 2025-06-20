@@ -24,6 +24,7 @@ var (
 // DownloadTask represents a file to download.
 type ArchiveFile struct {
 	Filename string
+	Contents []string
 }
 
 // Archiver listens for ScannedFile on tasksCh, archives them, and sends to a bucket.
@@ -32,6 +33,7 @@ func Archiver(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- 
 	defer close(doneCh)
 
 	var tgzFile string
+	var contents []string
 	for {
 		select {
 		case <-ctx.Done():
@@ -39,7 +41,8 @@ func Archiver(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- 
 		case task, ok := <-tasksCh:
 			if !ok {
 				CloseArchive()
-				doneCh <- ArchiveFile{Filename: tgzFile}
+				doneCh <- ArchiveFile{Filename: tgzFile, Contents: contents}
+				contents = nil
 				Println("Closing archiver...")
 				return
 			}
@@ -63,6 +66,8 @@ func Archiver(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- 
 			if debug {
 				log.Println("Writing", task.Filename, "to tar with size", task.Size)
 			}
+
+			contents = append(contents, task.Filename)
 
 			// Create a tar header for the file
 			header := &tar.Header{

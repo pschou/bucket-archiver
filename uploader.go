@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync/atomic"
@@ -11,6 +12,12 @@ import (
 func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- struct{}) {
 	log.Println("Starting uploader...")
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
+
+	f, err := os.OpenFile("upload.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	defer f.Close()
 
 	for {
 		select {
@@ -27,6 +34,10 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 			}
 			if err := uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8); err != nil {
 				log.Fatal(err)
+			}
+			// Write successful uploads to log file
+			for _, fileName := range task.Contents {
+				fmt.Fprintln(f, fileName)
 			}
 			os.Remove(task.Filename)
 			atomic.AddInt64(&UploadedFiles, 1)

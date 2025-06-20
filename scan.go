@@ -34,6 +34,8 @@ type ScannedFile struct {
 func init() {
 	clamLog.Println("Initializing ClamAV...")
 	definitionsPath := Env("DEFINITIONS", "./db", "The path with the ClamAV definitions")
+	maxScanTime := uint64(EnvInt("MAX_SCANTIME", 180000, "Max scan time in milliseconds"))
+
 	// Test if path exists and can be read or fail
 	info, err := os.Stat(definitionsPath)
 	if err != nil {
@@ -47,8 +49,6 @@ func init() {
 		clamLog.Fatalf("Cannot read definitions path: %v", err)
 	}
 	file.Close()
-
-	maxScanTime := uint64(EnvInt("MAX_SCANTIME", 180000, "Max scan time in milliseconds"))
 
 	scanReady.Add(1) // Add to wait group to signal when ClamAV is ready
 	go func() {

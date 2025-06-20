@@ -30,8 +30,11 @@ var (
 
 func StartMetrics(ctx context.Context) {
 	// Start metrics reporter goroutine
-	var lastBytes, lastUpBytes int64
-	var lastTime = time.Now()
+	var (
+		lastBytes, lastUpBytes int64
+		lastTime               = time.Now()
+		startTime              = time.Now()
+	)
 
 	metricsTicker = time.NewTicker(100 * time.Millisecond)
 	go func() {
@@ -51,10 +54,27 @@ func StartMetrics(ctx context.Context) {
 				statsMutex.Lock()
 				lastlen := len(statsLine)
 
-				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
+				var remaining string
+				if DownloadedBytes > 0 && TotalBytes > 0 && DownloadedBytes < TotalBytes {
+					elapsedTime := now.Sub(startTime)
+					rate := float64(DownloadedBytes) / elapsedTime.Seconds()
+					if rate > 0 {
+						remainingBytes := TotalBytes - DownloadedBytes
+						remainingSeconds := float64(remainingBytes) / rate
+						remainingDuration := time.Duration(remainingSeconds * float64(time.Second))
+						remaining = fmt.Sprintf("ETA: ~%s", remainingDuration.Round(time.Minute))
+					} else {
+						remaining = "ETA: N/A"
+					}
+				} else {
+					remaining = "ETA: N/A"
+				}
+
+				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s) %s", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
 					ScannedFiles,
-					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
+					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed),
+					remaining)
 
 				fmt.Fprintf(os.Stderr, "\r%s", statsLine)
 				for i := len(statsLine); i < lastlen; i++ {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,10 +22,15 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 	log.Println("Loading metadata from S3 bucket:", srcBucket)
 
 	prefixFilter := Env("PREFIX_FILTER", "", "Bucket prefix selector")
+	var prefix *string
+	if prefixFilter != "" {
+		prefix = &prefixFilter
+	}
 
 	// List objects in source bucket
 	paginator := s3.NewListObjectsV2Paginator(s3client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(srcBucket),
+		Prefix: prefix,
 	})
 
 	// Open metadata.json for writing
@@ -60,9 +64,6 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 		for _, obj := range page.Contents {
 			// Prepare metadata file content
 			if obj.Key == nil || obj.Size == nil {
-				continue
-			}
-			if prefixFilter != "" && !strings.HasPrefix(*obj.Key, prefixFilter) {
 				continue
 			}
 

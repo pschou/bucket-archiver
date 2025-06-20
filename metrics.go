@@ -29,7 +29,7 @@ func StartMetrics(ctx context.Context) {
 	var lastBytes, lastUpBytes int64
 	var lastTime = time.Now()
 
-	metricsTicker = time.NewTicker(250 * time.Millisecond)
+	metricsTicker = time.NewTicker(100 * time.Millisecond)
 	go func() {
 		//defer metricsTicker.Stop()
 		log.Println("Starting metrics...")
@@ -46,10 +46,12 @@ func StartMetrics(ctx context.Context) {
 				elapsed := now.Sub(lastTime)
 
 				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(line)))
+
 				line = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
 					ScannedFiles,
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
+
 				fmt.Fprintf(os.Stderr, "\r%s", line)
 				lastBytes = curBytes
 				lastUpBytes = curUpBytes

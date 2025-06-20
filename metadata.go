@@ -166,7 +166,7 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 			log.Printf("failed to unmarshal line %q: %v", line, err)
 			break // likely EOF or malformed line
 		}
-		if _, ok := skipFiles[entry.Key] {
+		if _, ok := skipFiles[entry.Key]; ok {
 			continue
 		}
 		if entry.Key == "" {

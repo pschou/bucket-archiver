@@ -48,6 +48,8 @@ func init() {
 	}
 	file.Close()
 
+	maxScanTime := uint64(EnvInt("MAX_SCANTIME", 180000, "Max scan time in milliseconds"))
+
 	scanReady.Add(1) // Add to wait group to signal when ClamAV is ready
 	go func() {
 		defer scanReady.Done() // Signal that the ClamAV instance is ready
@@ -124,7 +126,7 @@ func init() {
 		// 90000 milliseconds = 90 seconds
 		// This is the maximum time allowed for a scan before it is aborted.
 		// This is useful to prevent long-running scans from hanging indefinitely.
-		if err = clamavInstance.EngineSetNum(clamav.CL_ENGINE_MAX_SCANTIME, 90000); err != nil {
+		if err = clamavInstance.EngineSetNum(clamav.CL_ENGINE_MAX_SCANTIME, maxScanTime); err != nil {
 			clamLog.Fatalln("Could not set max scan time", err)
 		}
 		maxScanTime, err := clamavInstance.EngineGetNum(clamav.CL_ENGINE_MAX_SCANTIME)

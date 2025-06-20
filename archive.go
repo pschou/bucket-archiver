@@ -40,7 +40,7 @@ func Archiver(ctx context.Context, tasksCh <-chan ScannedFile, doneCh chan<- Arc
 			if !ok {
 				CloseArchive()
 				doneCh <- ArchiveFile{Filename: tgzFile}
-				log.Println("Closing archiver...")
+				Println("Closing archiver...")
 				return
 			}
 

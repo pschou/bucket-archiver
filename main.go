@@ -62,7 +62,7 @@ func main() {
 	log.Println("Making pipeline channels.")
 	var (
 		toDownload      = make(chan DownloadTask, 2)
-		downloadedFiles = make(chan DownloadedFile, 2)
+		downloadedFiles = make(chan DownloadedFile, 1)
 		scannedFiles    = make(chan ScannedFile, 2)
 		ArchiveFiles    = make(chan ArchiveFile, 2)
 		Done            = make(chan struct{})

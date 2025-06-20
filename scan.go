@@ -10,6 +10,7 @@ import (
 	"time"
 
 	clamav "github.com/hexahigh/go-clamav"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
@@ -156,6 +157,7 @@ func init() {
 // Scanner listens for Downloaded on tasksCh, scans them, and sends ScannedFile to doneCh.
 func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- ScannedFile) {
 	log.Println("Starting scanner...")
+	swg := sizedwaitgroup.New(3)
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
 
 	scanReady.Wait() // Wait for the ClamAV instance to be ready
@@ -165,96 +167,101 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 		case <-ctx.Done():
 			break
 		case task, ok := <-tasksCh:
-			atomic.AddInt64(&ScannedFiles, 1)
-
 			if !ok {
+				swg.Wait()
 				Println("Closing scanner...")
 				return
 			}
 
-			if task.Size == 0 {
-				doneCh <- ScannedFile{
-					Size:     task.Size,
-					Filename: task.Filename,
+			swg.Add()
+			go func(task DownloadedFile) {
+				defer swg.Done()
+				defer atomic.AddInt64(&ScannedFiles, 1)
+
+				if task.Size == 0 {
+					doneCh <- ScannedFile{
+						Size:     task.Size,
+						Filename: task.Filename,
+					}
+
+					return // Skip empty files
 				}
 
-				return // Skip empty files
-			}
+				if task.TempFile == "" {
+					// If the file is small enough, we can scan it in memory
+					fmem := clamav.OpenMemory(task.Bytes)
+					if fmem == nil {
+						errCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("failed to open memory for scanning %s", task.Filename),
+						}
+						putMemory(task.Bytes)
+						return // Skip this file if memory scan fails
+					}
+					// Scan the file in memory
+					_, virusName, err := clamavInstance.ScanMapCB(fmem, task.Filename, context.Background())
+					//clamav.CloseMemory(fmem) // Clean up memory after scanning
 
-			if task.TempFile == "" {
-				// If the file is small enough, we can scan it in memory
-				fmem := clamav.OpenMemory(task.Bytes)
-				if fmem == nil {
-					errCh <- &ErrorEvent{
+					if virusName != "" {
+						//log.Printf("Virus found in %q: %s\n", filePath, virusName)
+						// If a virus is found, return an error with the virus name
+						// and the file path for clarity.}
+						errCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
+						}
+						putMemory(task.Bytes)
+						return // Skip this file if memory scan fails
+					} else if err != nil {
+						errCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),
+						}
+						putMemory(task.Bytes)
+						return // Skip this file if memory scan fails
+					}
+					doneCh <- ScannedFile{
 						Size:     task.Size,
 						Filename: task.Filename,
-						Err:      fmt.Errorf("failed to open memory for scanning %s", task.Filename),
+						TempFile: task.TempFile,
+						Bytes:    task.Bytes,
 					}
-					putMemory(task.Bytes)
-					return // Skip this file if memory scan fails
-				}
-				// Scan the file in memory
-				_, virusName, err := clamavInstance.ScanMapCB(fmem, task.Filename, context.Background())
-				//clamav.CloseMemory(fmem) // Clean up memory after scanning
-
-				if virusName != "" {
-					//log.Printf("Virus found in %q: %s\n", filePath, virusName)
-					// If a virus is found, return an error with the virus name
-					// and the file path for clarity.}
-					errCh <- &ErrorEvent{
+				} else {
+					// If the file is large, we scan it from a temporary file
+					// Scan the file
+					//fmt.Printf("Scanning file: %s\n", tempFilePath)
+					_, virusName, err := clamavInstance.ScanFile(task.TempFile)
+					if virusName != "" {
+						// If a virus is found, return an error with the virus name
+						// and the file path for clarity.}
+						errCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
+						}
+						os.Remove(task.TempFile) // Clean up the temporary file after scanning
+						return                   // Skip this file if a virus is found
+					} else if err != nil {
+						// If a virus is found, return an error with the virus name
+						// and the file path for clarity.}
+						errCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),
+						}
+						os.Remove(task.TempFile) // Clean up the temporary file after scanning
+						return                   // Skip this file if a virus is found
+					}
+					doneCh <- ScannedFile{
 						Size:     task.Size,
 						Filename: task.Filename,
-						Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
+						TempFile: task.TempFile,
 					}
-					putMemory(task.Bytes)
-					return // Skip this file if memory scan fails
-				} else if err != nil {
-					errCh <- &ErrorEvent{
-						Size:     task.Size,
-						Filename: task.Filename,
-						Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),
-					}
-					putMemory(task.Bytes)
-					return // Skip this file if memory scan fails
 				}
-				doneCh <- ScannedFile{
-					Size:     task.Size,
-					Filename: task.Filename,
-					TempFile: task.TempFile,
-					Bytes:    task.Bytes,
-				}
-			} else {
-				// If the file is large, we scan it from a temporary file
-				// Scan the file
-				//fmt.Printf("Scanning file: %s\n", tempFilePath)
-				_, virusName, err := clamavInstance.ScanFile(task.TempFile)
-				if virusName != "" {
-					// If a virus is found, return an error with the virus name
-					// and the file path for clarity.}
-					errCh <- &ErrorEvent{
-						Size:     task.Size,
-						Filename: task.Filename,
-						Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
-					}
-					os.Remove(task.TempFile) // Clean up the temporary file after scanning
-					return                   // Skip this file if a virus is found
-				} else if err != nil {
-					// If a virus is found, return an error with the virus name
-					// and the file path for clarity.}
-					errCh <- &ErrorEvent{
-						Size:     task.Size,
-						Filename: task.Filename,
-						Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),
-					}
-					os.Remove(task.TempFile) // Clean up the temporary file after scanning
-					return                   // Skip this file if a virus is found
-				}
-				doneCh <- ScannedFile{
-					Size:     task.Size,
-					Filename: task.Filename,
-					TempFile: task.TempFile,
-				}
-			}
+			}(task)
 		}
 	}
 }

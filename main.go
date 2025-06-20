@@ -57,7 +57,7 @@ func main() {
 	}
 	log.Printf("Total objects: %d, Total size: %s", TotalFiles, humanizeBytes(TotalBytes))
 
-	scanReady.Wait() // Wait for the ClamAV instance to be ready
+	//scanReady.Wait() // Wait for the ClamAV instance to be ready
 
 	log.Println("Making pipeline channels.")
 	var (

@@ -71,7 +71,7 @@ func main() {
 	go func() {
 		log.Println("Watching for errors...")
 		for errEvent := range errCh {
-			log.Println(errEvent.Err)
+			Println(errEvent.Err)
 		}
 	}()
 

@@ -30,6 +30,15 @@ func main() {
 		log.Fatalf("SIZECAP value %d is too small; must be at least 100 bytes", sizeCapLimit)
 	}
 
+	log.Println("Making pipeline channels.")
+	var (
+		toDownload      = make(chan DownloadTask, EnvInt("CHAN_TODO_DOWNLOAD", 10, "Buffer size for toDownload channel"))
+		downloadedFiles = make(chan DownloadedFile, EnvInt("CHAN_DOWNLOADED_FILES", 20, "Buffer size for downloadedFiles channel"))
+		scannedFiles    = make(chan ScannedFile, EnvInt("CHAN_SCANNED_FILES", 10, "Buffer size for scannedFiles channel"))
+		ArchiveFiles    = make(chan ArchiveFile, EnvInt("CHAN_ARCHIVE_FILES", 2, "Buffer size for ArchiveFiles channel"))
+		Done            = make(chan struct{})
+	)
+
 	//log.Printf("Size cap limit for each tarball contents: %d bytes", sizeCapLimit)
 
 	// Default context for processing
@@ -63,15 +72,6 @@ func main() {
 	log.Printf("Total objects: %d, Total size: %s", TotalFiles, humanizeBytes(TotalBytes))
 
 	scanReady.Wait() // Wait for the ClamAV instance to be ready
-
-	log.Println("Making pipeline channels.")
-	var (
-		toDownload      = make(chan DownloadTask, 10)
-		downloadedFiles = make(chan DownloadedFile, 20)
-		scannedFiles    = make(chan ScannedFile, 10)
-		ArchiveFiles    = make(chan ArchiveFile, 2)
-		Done            = make(chan struct{})
-	)
 
 	// Create a channel for error events to be handled by the error logger goroutine
 	go func() {

@@ -29,6 +29,22 @@ func Env(env, def, usage string) string {
 	return def
 }
 
+func EnvInt(env string, def int, usage string) int {
+	valStr := os.Getenv(env)
+	if valStr != "" {
+		var val int
+		_, err := fmt.Sscanf(valStr, "%d", &val)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid integer for %s: %q\n", env, valStr)
+			os.Exit(1)
+		}
+		fmt.Printf("  %-30s # %s\n", fmt.Sprintf("%s=%d", env, val), usage)
+		return val
+	}
+	fmt.Printf("  %-30s # %s\n", fmt.Sprintf("%s=%d (default)", env, def), usage)
+	return def
+}
+
 // parseByteSize parses a human-readable byte size string (e.g., "1GB", "500MB", "100K") into int64 bytes.
 func parseByteSize(s string) (int64, error) {
 	var size int64

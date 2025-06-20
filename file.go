@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -34,17 +33,9 @@ func ReadLastLineJSONStats(path string) (*FileStats, error) {
 		return nil, errors.New("file is empty")
 	}
 
-	offset := size
-	if offset > 2000 {
-		offset = offset - 2000
-	}
-	tmp := make([]byte, 2000)
-	_, err = f.ReadAt(tmp, offset)
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
+	f.Seek(-1000, io.SeekEnd)
 
-	scanner := bufio.NewScanner(bytes.NewReader(tmp))
+	scanner := bufio.NewScanner(f)
 	var lastLine string
 	for scanner.Scan() {
 		lastLine = scanner.Text()

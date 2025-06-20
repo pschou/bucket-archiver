@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to parse SIZECAP: %v", err)
 	} else if sizeCapLimit < 100 {
-		log.Fatalf("SIZECAP value %d is too small; must be at least 100 bytes", parsed)
+		log.Fatalf("SIZECAP value %d is too small; must be at least 100 bytes", sizeCapLimit)
 	}
 
 	//log.Printf("Size cap limit for each tarball contents: %d bytes", sizeCapLimit)

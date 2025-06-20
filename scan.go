@@ -168,7 +168,7 @@ func Scanner(ctx context.Context, tasksCh <-chan DownloadedFile, doneCh chan<- S
 			atomic.AddInt64(&ScannedFiles, 1)
 
 			if !ok {
-				log.Println("Closing scanner...")
+				Println("Closing scanner...")
 				return
 			}
 

@@ -22,6 +22,8 @@ var (
 	UploadedFiles int64
 	UploadedBytes int64
 	metricsTicker *time.Ticker
+
+	statsLine string
 )
 
 func StartMetrics(ctx context.Context) {
@@ -33,7 +35,6 @@ func StartMetrics(ctx context.Context) {
 	go func() {
 		//defer metricsTicker.Stop()
 		log.Println("Starting metrics...")
-		var line string
 		for {
 			select {
 			case <-ctx.Done():
@@ -45,20 +46,25 @@ func StartMetrics(ctx context.Context) {
 				now := time.Now()
 				elapsed := now.Sub(lastTime)
 
-				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(line)))
+				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(statsLine)))
 
-				line = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
+				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
 					ScannedFiles,
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 
-				fmt.Fprintf(os.Stderr, "\r%s", line)
+				fmt.Fprintf(os.Stderr, "\r%s", statsLine)
 				lastBytes = curBytes
 				lastUpBytes = curUpBytes
 				lastTime = now
 			}
 		}
 	}()
+}
+
+func Println(v ...any) {
+	fmt.Fprintf(os.Stderr, "\r%s\r", spaces(len(statsLine)))
+	fmt.Println(v)
 }
 
 func spaces(i int) (s string) {

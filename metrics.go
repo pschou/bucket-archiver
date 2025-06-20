@@ -49,7 +49,7 @@ func StartMetrics(ctx context.Context) {
 				elapsed := now.Sub(lastTime)
 
 				statsMutex.Lock()
-				fmt.Fprintf(os.Stderr, "\r%s", spaces(len(statsLine)))
+				lastlen := len(statsLine)
 
 				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s)", DownloadedFiles, TotalFiles,
 					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
@@ -57,6 +57,10 @@ func StartMetrics(ctx context.Context) {
 					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed))
 
 				fmt.Fprintf(os.Stderr, "\r%s", statsLine)
+				for i := len(statsLine); i < lastlen; i++ {
+					fmt.Fprintf(os.Stderr, " ")
+				}
+
 				statsMutex.Unlock()
 
 				lastBytes = curBytes

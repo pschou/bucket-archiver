@@ -40,7 +40,7 @@ func Archiver(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *Arch
 			return
 		case task, ok := <-tasksCh:
 			if debug {
-				log.Printf("Archiver task: %#v\n", task)
+				log.Printf("Archiver task: %#v %v\n", task, ok)
 			}
 
 			if !ok {

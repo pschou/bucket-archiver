@@ -165,7 +165,7 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 			}
 		}
 		if debug {
-			log.Println("scanned:", scanner.Text())
+			log.Println("sending:", scanner.Text())
 		}
 
 		// Parse each line as JSON to get file metadata
@@ -177,13 +177,16 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 			break // likely EOF or malformed line
 		}
 		if _, ok := skipFiles[entry.Key]; ok {
+			if debug {
+				log.Printf("skipping dup: %#v\n", entry)
+			}
 			continue
 		}
 		if entry.Key == "" {
 			break
 		}
 		if debug {
-			log.Printf("Sending task: %#v\n", entry.Key)
+			log.Printf("sent task: %#v\n", entry)
 		}
 		doFiles <- DownloadTask{Filename: entry.Key, Size: entry.Size}
 	}

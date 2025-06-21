@@ -39,6 +39,10 @@ func Archiver(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- Archiv
 		case <-ctx.Done():
 			return
 		case task, ok := <-tasksCh:
+			if debug {
+				log.Printf("Archiver task: %#v\n", task)
+			}
+
 			if !ok {
 				CloseArchive()
 				FileContents := make([]string, len(contents))

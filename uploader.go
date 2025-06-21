@@ -24,14 +24,15 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 		case <-ctx.Done():
 			break
 		case task, ok := <-tasksCh:
+			if debug {
+				log.Printf("Uploader task: %#v %v\n", task, ok)
+			}
+
 			if !ok {
 				Println("Closing uploader...")
 				return
 			}
 
-			if debug {
-				log.Println("Sending file to upload", task.Filename)
-			}
 			if err := uploadFileInParts(ctx, dstBucket, task.Filename, task.Filename, 8); err != nil {
 				log.Fatal(err)
 			}

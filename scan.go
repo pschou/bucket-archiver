@@ -160,10 +160,17 @@ func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFil
 		case <-ctx.Done():
 			break
 		case task, ok := <-tasksCh:
+			if debug {
+				log.Printf("Scanner task: %#v\n", task)
+			}
+
 			if !ok {
 				swg.Wait()
 				Println("Closing scanner...")
 				return
+			}
+			if debug {
+				log.Printf("Scanner task: %#v\n", task)
 			}
 
 			swg.Add()

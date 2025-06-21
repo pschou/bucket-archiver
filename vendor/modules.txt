@@ -99,6 +99,11 @@ github.com/aws/smithy-go/waiter
 # github.com/hexahigh/go-clamav v0.7.1
 ## explicit; go 1.18
 github.com/hexahigh/go-clamav
+# github.com/klauspost/compress v1.18.0
+## explicit; go 1.22
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/gzip
+github.com/klauspost/compress/internal/le
 # github.com/remeh/sizedwaitgroup v1.0.0
 ## explicit
 github.com/remeh/sizedwaitgroup

@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.81.0
 	github.com/aws/smithy-go v1.22.4
 	github.com/hexahigh/go-clamav v0.7.1
+	github.com/klauspost/compress v1.18.0
 	github.com/remeh/sizedwaitgroup v1.0.0
 )
 

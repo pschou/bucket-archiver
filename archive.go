@@ -3,12 +3,13 @@ package main
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 var (

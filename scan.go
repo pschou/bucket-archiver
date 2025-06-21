@@ -148,7 +148,7 @@ func initScan() {
 }
 
 // Scanner listens for WorkFile on tasksCh, scans them, and sends WorkFile to doneCh.
-func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFile) {
+func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkFile) {
 	log.Println("Starting scanner...")
 	swg := sizedwaitgroup.New(concurrentScans)
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
@@ -161,7 +161,7 @@ func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFil
 			break
 		case task, ok := <-tasksCh:
 			if debug {
-				log.Printf("Scanner task: %#v\n", task)
+				log.Printf("Scanner task: %#v %v\n", task, ok)
 			}
 
 			if !ok {
@@ -169,17 +169,14 @@ func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFil
 				Println("Closing scanner...")
 				return
 			}
-			if debug {
-				log.Printf("Scanner task: %#v\n", task)
-			}
 
 			swg.Add()
-			go func(task WorkFile) {
+			go func(task *WorkFile) {
 				defer swg.Done()
 				defer atomic.AddInt64(&ScannedFiles, 1)
 
 				if task.Size == 0 {
-					doneCh <- WorkFile{
+					doneCh <- &WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 					}
@@ -223,7 +220,7 @@ func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFil
 						putMemory(task.Bytes)
 						return // Skip this file if memory scan fails
 					}
-					doneCh <- WorkFile{
+					doneCh <- &WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 						TempFile: task.TempFile,
@@ -255,7 +252,7 @@ func Scanner(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- WorkFil
 						os.Remove(task.TempFile) // Clean up the temporary file after scanning
 						return                   // Skip this file if a virus is found
 					}
-					doneCh <- WorkFile{
+					doneCh <- &WorkFile{
 						Size:     task.Size,
 						Filename: task.Filename,
 						TempFile: task.TempFile,

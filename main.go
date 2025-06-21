@@ -39,10 +39,10 @@ func main() {
 
 	log.Println("Making pipeline channels.")
 	var (
-		toDownload      = make(chan DownloadTask, EnvInt("CHAN_TODO_DOWNLOAD", 10, "Buffer size for toDownload channel"))
-		downloadedFiles = make(chan WorkFile, EnvInt("CHAN_DOWNLOADED_FILES", 20, "Buffer size for downloadedFiles channel"))
-		scannedFiles    = make(chan WorkFile, EnvInt("CHAN_SCANNED_FILES", 10, "Buffer size for scannedFiles channel"))
-		ArchiveFiles    = make(chan ArchiveFile, EnvInt("CHAN_ARCHIVE_FILES", 2, "Buffer size for ArchiveFiles channel"))
+		toDownload      = make(chan *DownloadTask, EnvInt("CHAN_TODO_DOWNLOAD", 10, "Buffer size for toDownload channel"))
+		downloadedFiles = make(chan *WorkFile, EnvInt("CHAN_DOWNLOADED_FILES", 20, "Buffer size for downloadedFiles channel"))
+		scannedFiles    = make(chan *WorkFile, EnvInt("CHAN_SCANNED_FILES", 10, "Buffer size for scannedFiles channel"))
+		ArchiveFiles    = make(chan *ArchiveFile, EnvInt("CHAN_ARCHIVE_FILES", 2, "Buffer size for ArchiveFiles channel"))
 		Done            = make(chan struct{})
 	)
 

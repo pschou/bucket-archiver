@@ -106,7 +106,7 @@ func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount
 	return
 }
 
-func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
+func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 
 	f, err := os.Open("upload.log")
 	if err == nil {
@@ -188,7 +188,7 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 		if debug {
 			log.Printf("sent task: %#v\n", entry)
 		}
-		doFiles <- DownloadTask{Filename: entry.Key, Size: entry.Size}
+		doFiles <- &DownloadTask{Filename: entry.Key, Size: entry.Size}
 	}
 
 	if err := scanner.Err(); err != nil {

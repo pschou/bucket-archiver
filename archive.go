@@ -28,7 +28,7 @@ type ArchiveFile struct {
 }
 
 // Archiver listens for WorkFile on tasksCh, archives them, and sends to a bucket.
-func Archiver(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- ArchiveFile) {
+func Archiver(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *ArchiveFile) {
 	log.Println("Starting archiver...")
 	defer close(doneCh)
 
@@ -44,12 +44,15 @@ func Archiver(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- Archiv
 			}
 
 			if !ok {
+				if tgzFile == "" {
+					return
+				}
 				CloseArchive()
 				FileContents := make([]string, len(contents))
 				for i := range contents {
 					FileContents[i] = contents[i]
 				}
-				doneCh <- ArchiveFile{Filename: tgzFile, Contents: FileContents}
+				doneCh <- &ArchiveFile{Filename: tgzFile, Contents: FileContents}
 				contents = nil
 				Println("Closing archiver...")
 				return
@@ -70,7 +73,7 @@ func Archiver(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- Archiv
 				for i := range contents {
 					FileContents[i] = contents[i]
 				}
-				doneCh <- ArchiveFile{Filename: tgzFile, Contents: FileContents}
+				doneCh <- &ArchiveFile{Filename: tgzFile, Contents: FileContents}
 				contents = nil
 				archiveBytesWritten = 0
 				tgzFile = OpenArchive()

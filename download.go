@@ -37,7 +37,7 @@ func putMemory(mem []byte) {
 var maxMemObject = int64(EnvInt("MAX_IN_MEM", 96, "Maximum in memory object in kb"))
 
 // Downloader listens for DownloadTask on tasksCh, downloads them, and sends DownloadedFile to doneCh.
-func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- WorkFile) {
+func Downloader(ctx context.Context, tasksCh <-chan *DownloadTask, doneCh chan<- *WorkFile) {
 	log.Println("Starting downloader...")
 	swg := sizedwaitgroup.New(16) // Limit to 16 concurrent downloading parts
 	defer close(doneCh)           // Ensure doneCh is closed when the function exits
@@ -65,7 +65,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 				swg.Add() // Add to the sized wait group for each part
 			}
 
-			go func(task DownloadTask, parts int) {
+			go func(task *DownloadTask, parts int) {
 				defer func() {
 					for i := 0; i < parts; i++ {
 						swg.Done() // Mark the part as done
@@ -74,7 +74,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 
 				if task.Size == 0 {
 					// Empty files just head a header
-					doneCh <- WorkFile{Size: task.Size, Filename: task.Filename}
+					doneCh <- &WorkFile{Size: task.Size, Filename: task.Filename}
 				} else if task.Size <= maxMemObject*1024 { // If file is less than 32KB, download it in memory.
 					// Use a buffer pool to reuse memory for small files
 					// bufPool32 is for files <= 32KB, bufPoolLarge is for large files
@@ -104,7 +104,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 					}
 					// Successfully downloaded the file to memory
 					// Send the downloaded file to doneCh
-					doneCh <- WorkFile{Size: task.Size, Filename: task.Filename,
+					doneCh <- &WorkFile{Size: task.Size, Filename: task.Filename,
 						Bytes: mem[:n]} // Use the buffer directly as Filebytes
 				} else {
 					tempFilePath, err := downloadObjectInParts(ctx, srcBucket, task.Filename, task.Size, parts)
@@ -116,7 +116,7 @@ func Downloader(ctx context.Context, tasksCh <-chan DownloadTask, doneCh chan<- 
 					}
 					// Successfully downloaded the file to a temporary file
 					// Send the downloaded file to doneCh
-					doneCh <- WorkFile{Size: task.Size, Filename: task.Filename, TempFile: tempFilePath}
+					doneCh <- &WorkFile{Size: task.Size, Filename: task.Filename, TempFile: tempFilePath}
 				}
 				atomic.AddInt64(&DownloadedFiles, 1)
 			}(task, parts)

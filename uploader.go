@@ -9,7 +9,7 @@ import (
 )
 
 // Uploader listens for ArchiveFile on tasksCh, uploads them, and when the channel is closed sends a done
-func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- struct{}) {
+func Uploader(ctx context.Context, tasksCh <-chan *ArchiveFile, doneCh chan<- struct{}) {
 	log.Println("Starting uploader...")
 	defer close(doneCh) // Ensure doneCh is closed when the function exits
 

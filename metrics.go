@@ -21,9 +21,10 @@ var (
 	DownloadedFiles int64
 	DownloadedBytes int64
 
-	UploadedFiles int64
-	UploadedBytes int64
-	metricsTicker *time.Ticker
+	UploadedArchivedFiles int64
+	UploadedFiles         int64
+	UploadedBytes         int64
+	metricsTicker         *time.Ticker
 
 	statsLine  string
 	statsMutex sync.Mutex
@@ -72,10 +73,22 @@ func StartMetrics(ctx context.Context) {
 				}
 				remaining = strings.TrimSuffix(strings.TrimSuffix(remaining, "0s"), "0m")
 
-				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d %s (%s) %s", DownloadedFiles, TotalFiles,
-					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes), humanizeRate(curBytes-lastBytes, elapsed),
+				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d with %d %s (%s) %s",
+					// #/#
+					DownloadedFiles, TotalFiles,
+					// #/#
+					humanizeBytes(DownloadedBytes), humanizeBytes(TotalBytes),
+					// ( )
+					humanizeRate(curBytes-lastBytes, elapsed),
+					// Scanned:
 					ScannedFiles,
-					UploadedFiles, humanizeBytes(UploadedBytes), humanizeRate(curUpBytes-lastUpBytes, elapsed),
+					// Upload:
+					UploadedFiles,
+					// with
+					UploadedArchivedFiles, humanizeBytes(UploadedBytes),
+					// ( )
+					humanizeRate(curUpBytes-lastUpBytes, elapsed),
+					//
 					remaining)
 
 				fmt.Fprintf(os.Stderr, "\r%s", statsLine)

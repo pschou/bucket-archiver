@@ -40,6 +40,7 @@ func Uploader(ctx context.Context, tasksCh <-chan ArchiveFile, doneCh chan<- str
 				fmt.Fprintln(f, fileName)
 			}
 			os.Remove(task.Filename)
+			atomic.AddInt64(&UploadedArchivedFiles, int64(len(task.Contents)))
 			atomic.AddInt64(&UploadedFiles, 1)
 		}
 	}

@@ -160,9 +160,11 @@ func CloseArchive() {
 	if err := archiveTar.Close(); err != nil {
 		log.Printf("failed to close tar writer: %v", err)
 	}
+	archiveGzip.Flush()
 	if err := archiveGzip.Close(); err != nil {
 		log.Printf("failed to close gzip writer: %v", err)
 	}
+	archiveFile.Sync()
 	if err := archiveFile.Close(); err != nil {
 		log.Printf("failed to close tgz file: %v", err)
 	}

@@ -143,6 +143,9 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 	lineNumber := 0
 	strider := 0
 	for scanner.Scan() {
+		if debug {
+			log.Println("scanned:", scanner.Text())
+		}
 		lineNumber++
 		if start > 0 {
 			start--
@@ -171,6 +174,9 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 		}
 		if entry.Key == "" {
 			break
+		}
+		if debug {
+			log.Printf("Sending task: %#v\n", entry.Key)
 		}
 		doFiles <- DownloadTask{Filename: entry.Key, Size: entry.Size}
 	}

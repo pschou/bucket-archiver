@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	archiveCount        = 0
+	archiveCount        = EnvInt("ARCHIVE_OFFSET", 0, "Archive numbering offset")
 	archiveTar          *tar.Writer
 	archiveGzip         *gzip.Writer
 	archiveFile         *os.File

@@ -29,7 +29,7 @@ var (
 	srcBucket, dstBucket string // Source and destination buckets
 )
 
-func init() {
+func initS3() {
 	awscliLog.Println("Initializing S3 client...")
 	s3RefreshTime, err := time.ParseDuration(Env("REFRESH", "20m", "The refresh interval for grabbing new AMI credentials"))
 	if err != nil {

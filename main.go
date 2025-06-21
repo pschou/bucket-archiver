@@ -23,6 +23,8 @@ var (
 
 func main() {
 	fmt.Printf("Starting bucket-archiver v%s: downloading, archiving, and uploading S3 objects.\n", version)
+	initS3()
+	initScan()
 
 	// Parse SIZECAP environment variable if set, otherwise use default
 	sizeCapStr := Env("SIZECAP", "2G", "Limit the size of the uncompressed archive payload")

@@ -22,7 +22,7 @@ var (
 	concurrentScans = EnvInt("CONCURRENT_SCANNERS", 3, "How many concurrent scanners can run at once")
 )
 
-func init() {
+func initScan() {
 	clamLog.Println("Initializing ClamAV...")
 	definitionsPath := Env("DEFINITIONS", "./db", "The path with the ClamAV definitions")
 	maxScanTime := uint64(EnvInt("MAX_SCANTIME", 180000, "Max scan time in milliseconds"))

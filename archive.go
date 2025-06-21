@@ -59,12 +59,17 @@ func Archiver(ctx context.Context, tasksCh <-chan WorkFile, doneCh chan<- Archiv
 			if debug {
 				log.Println("Written", archiveBytesWritten, "Size Cap", sizeCapLimit)
 			}
-			if archiveBytesWritten > sizeCapLimit {
+			if archiveBytesWritten > 0 && archiveBytesWritten+task.Size > sizeCapLimit {
 				// If the internal size is above the capacity limit, roll files
 				CloseArchive()
-				doneCh <- ArchiveFile{Filename: tgzFile}
-				tgzFile = OpenArchive()
+				FileContents := make([]string, len(contents))
+				for i := range contents {
+					FileContents[i] = contents[i]
+				}
+				doneCh <- ArchiveFile{Filename: tgzFile, Contents: FileContents}
+				contents = nil
 				archiveBytesWritten = 0
+				tgzFile = OpenArchive()
 			}
 
 			if debug {
@@ -132,7 +137,7 @@ func OpenArchive() string {
 	}
 
 	// Create a gzip writer and tar writer
-	archiveGzip, err = gzip.NewWriterLevel(archiveFile, gzip.DefaultCompression)
+	archiveGzip, err = gzip.NewWriterLevel(archiveFile, gzip.BestSpeed)
 	if err != nil {
 		log.Fatalf("failed to create compressor for tgz file: %v", err)
 	}

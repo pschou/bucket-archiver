@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -180,6 +181,8 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 			if debug {
 				log.Printf("skipping dup: %#v\n", entry)
 			}
+			atomic.AddInt64(&TotalBytes, -entry.Size)
+			atomic.AddInt64(&TotalFiles, -1)
 			continue
 		}
 		if entry.Key == "" {

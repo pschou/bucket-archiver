@@ -11,7 +11,6 @@ type UploadReader struct {
 
 func (s *UploadReader) Read(p []byte) (n int, err error) {
 	n, err = s.r.Read(p)
-	DownloadedBytes += int64(n)
 	atomic.AddInt64(&UploadedBytes, int64(n))
 	return
 }

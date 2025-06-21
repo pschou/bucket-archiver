@@ -71,7 +71,7 @@ func StartMetrics(ctx context.Context) {
 				} else {
 					remaining = "ETA: N/A"
 				}
-				remaining = strings.TrimSuffix(strings.TrimSuffix(remaining, "0s"), "0m")
+				remaining = strings.TrimSuffix(remaining, "0s")
 
 				statsLine = fmt.Sprintf("Download: %d/%d %s/%s (%s)  Scanned: %d  Upload: %d with %d %s (%s) %s",
 					// #/#

@@ -22,7 +22,6 @@ type MetaEntry struct {
 var (
 	subSetFiles = Env("SUBSET", "", "Subset the files by START:STRIDE or START:STRIDE:END")
 	skipFiles   = make(map[string]struct{})
-	offsetInt   = EnvInt("OFFSET", 0, "Archive numbering offset")
 )
 
 func loadMetadata(ctx context.Context, srcBucket string) (totalSize, objectCount int64, err error) {

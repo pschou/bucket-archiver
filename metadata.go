@@ -140,6 +140,10 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 		end = -1 // Use -1 or another sentinel value to indicate "no end"
 	}
 
+	if debug {
+		log.Println("start:", start, "stride:", stride, "end:", end)
+	}
+
 	lineNumber := 0
 	strider := 0
 	for scanner.Scan() {
@@ -159,6 +163,9 @@ func ReadMetadata(ctx context.Context, doFiles chan<- DownloadTask) {
 			if strider != 1 {
 				continue
 			}
+		}
+		if debug {
+			log.Println("scanned:", scanner.Text())
 		}
 
 		// Parse each line as JSON to get file metadata

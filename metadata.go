@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -181,6 +182,8 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 			atomic.AddInt64(&TotalFiles, 1)
 		}
 	}
+
+	metadataFile.Seek(io.SeekStart, 0) // Back the the start
 
 	scanner := bufio.NewScanner(metadataFile)
 	if debug {

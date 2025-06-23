@@ -188,7 +188,7 @@ func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkF
 					// If the file is small enough, we can scan it in memory
 					fmem := clamav.OpenMemory(task.Bytes)
 					if fmem == nil {
-						errCh <- &ErrorEvent{
+						fileErrCh <- &ErrorEvent{
 							Size:     task.Size,
 							Filename: task.Filename,
 							Err:      fmt.Errorf("failed to open memory for scanning %s", task.Filename),
@@ -204,7 +204,7 @@ func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkF
 						//log.Printf("Virus found in %q: %s\n", filePath, virusName)
 						// If a virus is found, return an error with the virus name
 						// and the file path for clarity.}
-						errCh <- &ErrorEvent{
+						fileErrCh <- &ErrorEvent{
 							Size:     task.Size,
 							Filename: task.Filename,
 							Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
@@ -212,7 +212,7 @@ func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkF
 						putMemory(task.Bytes)
 						return // Skip this file if memory scan fails
 					} else if err != nil {
-						errCh <- &ErrorEvent{
+						fileErrCh <- &ErrorEvent{
 							Size:     task.Size,
 							Filename: task.Filename,
 							Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),
@@ -234,7 +234,7 @@ func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkF
 					if virusName != "" {
 						// If a virus is found, return an error with the virus name
 						// and the file path for clarity.}
-						errCh <- &ErrorEvent{
+						fileErrCh <- &ErrorEvent{
 							Size:     task.Size,
 							Filename: task.Filename,
 							Err:      fmt.Errorf("virus found in %s: %s", task.Filename, virusName),
@@ -244,7 +244,7 @@ func Scanner(ctx context.Context, tasksCh <-chan *WorkFile, doneCh chan<- *WorkF
 					} else if err != nil {
 						// If a virus is found, return an error with the virus name
 						// and the file path for clarity.}
-						errCh <- &ErrorEvent{
+						fileErrCh <- &ErrorEvent{
 							Size:     task.Size,
 							Filename: task.Filename,
 							Err:      fmt.Errorf("error scanning %s: %v", task.Filename, err),

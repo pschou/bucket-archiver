@@ -128,19 +128,61 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 	}
 	defer metadataFile.Close()
 
-	scanner := bufio.NewScanner(metadataFile)
-
 	var start, stride, end int
 	if subSetFiles == "" {
 		stride = 1
 		end = -1
-	} else if n, err := fmt.Sscanf(subSetFiles, "%d:%d:%d", &start, &stride, &end); err == nil && n == 3 {
-		// All fields are provided, NOOP
-	} else if n, err = fmt.Sscanf(subSetFiles, "%d:%d", &start, &stride); err == nil && n == 2 {
-		// Try START:STRIDE
-		end = -1 // Use -1 or another sentinel value to indicate "no end"
+	} else {
+		if n, err := fmt.Sscanf(subSetFiles, "%d:%d:%d", &start, &stride, &end); err == nil && n == 3 {
+			// All fields are provided, NOOP
+		} else if n, err = fmt.Sscanf(subSetFiles, "%d:%d", &start, &stride); err == nil && n == 2 {
+			// Try START:STRIDE
+			end = -1 // Use -1 or another sentinel value to indicate "no end"
+		}
+
+		// First pass to do size accounting with the stride accounting
+		TotalBytes = 0
+		TotalFiles = 0
+
+		scanner := bufio.NewScanner(metadataFile)
+		lineNumber := 0
+		strider := 0
+		for scanner.Scan() {
+			if debug {
+				log.Println("scanned:", scanner.Text())
+			}
+			lineNumber++
+			if start > 0 {
+				start--
+				continue
+			}
+			if end != -1 && lineNumber > end {
+				break
+			}
+			if stride > 1 {
+				strider = (strider + 1) % stride
+				if strider != 1 {
+					continue
+				}
+			}
+
+			// Parse each line as JSON to get file metadata
+			// Assuming each line in metadata.jsonl is a JSON object with "name" and "size" fields
+			var entry MetaEntry
+			line := scanner.Bytes()
+			if err := json.Unmarshal(line, &entry); err != nil {
+				log.Printf("failed to unmarshal line %q: %v", line, err)
+				break // likely EOF or malformed line
+			}
+			if entry.Key == "" {
+				break
+			}
+			atomic.AddInt64(&TotalBytes, entry.Size)
+			atomic.AddInt64(&TotalFiles, 1)
+		}
 	}
 
+	scanner := bufio.NewScanner(metadataFile)
 	if debug {
 		log.Println("start:", start, "stride:", stride, "end:", end)
 	}
@@ -165,9 +207,6 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 				continue
 			}
 		}
-		if debug {
-			log.Println("sending:", scanner.Text())
-		}
 
 		// Parse each line as JSON to get file metadata
 		// Assuming each line in metadata.jsonl is a JSON object with "name" and "size" fields
@@ -177,6 +216,9 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 			log.Printf("failed to unmarshal line %q: %v", line, err)
 			break // likely EOF or malformed line
 		}
+		if entry.Key == "" {
+			break
+		}
 		if _, ok := skipFiles[entry.Key]; ok {
 			if debug {
 				log.Printf("skipping dup: %#v\n", entry)
@@ -185,9 +227,11 @@ func ReadMetadata(ctx context.Context, doFiles chan<- *DownloadTask) {
 			atomic.AddInt64(&TotalFiles, -1)
 			continue
 		}
-		if entry.Key == "" {
-			break
+
+		if debug {
+			log.Println("sending:", scanner.Text())
 		}
+
 		if debug {
 			log.Printf("sent task: %#v\n", entry)
 		}

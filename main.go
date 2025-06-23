@@ -89,7 +89,7 @@ func main() {
 		}
 		defer f.Close()
 
-		for errEvent := range errCh {
+		for errEvent := range fileErrCh {
 			data, err := json.Marshal(errEvent)
 			if err != nil {
 				log.Printf("failed to marshal error event: %v", err)
@@ -124,7 +124,7 @@ func main() {
 
 	<-Done // Wait for all uploads to finish
 
-	close(errCh) // Close error channel to ensure the logs are written to disk
+	close(fileErrCh) // Close error channel to ensure the logs are written to disk
 
 	// Stop the metrics collection and clean up any resources
 	StopMetrics()

@@ -1,7 +1,7 @@
 package main
 
 var (
-	errCh = make(chan *ErrorEvent, 100) // Channel to send error events
+	fileErrCh = make(chan *ErrorEvent, 100) // Channel to send error events
 )
 
 type ErrorEvent struct {

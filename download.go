@@ -90,15 +90,21 @@ func Downloader(ctx context.Context, tasksCh <-chan *DownloadTask, doneCh chan<-
 					n, err := downloadObjectToBuffer(ctx, srcBucket, task.Filename, mem)
 					if err != nil {
 						// Log the error and continue to the next file
-						errCh <- &ErrorEvent{Size: task.Size, Filename: task.Filename,
-							Err: fmt.Errorf("Error downloading object %s to memory: %v", task.Filename, err)}
+						fileErrCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("Error downloading object %s to memory: %v", task.Filename, err),
+						}
 						putMemory(mem)
 						return
 					}
 					// Check if the number of bytes written matches the expected size
 					if int64(n) != task.Size {
-						errCh <- &ErrorEvent{Size: task.Size, Filename: task.Filename,
-							Err: fmt.Errorf("Short write for object %s: expected %d, got %d", task.Filename, task.Size, n)}
+						fileErrCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("Short write for object %s: expected %d, got %d", task.Filename, task.Size, n),
+						}
 						putMemory(mem)
 						return
 					}
@@ -110,8 +116,11 @@ func Downloader(ctx context.Context, tasksCh <-chan *DownloadTask, doneCh chan<-
 					tempFilePath, err := downloadObjectInParts(ctx, srcBucket, task.Filename, task.Size, parts)
 					if err != nil {
 						// Log the error and continue to the next file
-						errCh <- &ErrorEvent{Size: task.Size, Filename: task.Filename,
-							Err: fmt.Errorf("Error downloading object %s to temporary file: %v", task.Filename, err)}
+						fileErrCh <- &ErrorEvent{
+							Size:     task.Size,
+							Filename: task.Filename,
+							Err:      fmt.Errorf("Error downloading object %s to temporary file: %v", task.Filename, err),
+						}
 						return
 					}
 					// Successfully downloaded the file to a temporary file
